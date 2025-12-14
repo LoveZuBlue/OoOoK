@@ -29,7 +29,7 @@ const particleShader = {
       gl_PointSize = size * (600.0 / -mvPosition.z);
       
       // Elegant subtle pulse
-      float pulse = sin(uTime * 1.0 + position.x * 2.0) * 0.1 + 0.95;
+      float pulse = sin(uTime * 0.8 + position.x * 2.0) * 0.1 + 0.95;
       gl_PointSize *= pulse;
 
       gl_Position = projectionMatrix * mvPosition;
@@ -60,8 +60,8 @@ const particleShader = {
       // constructive interference in a moving 3D noise field.
       // When a particle enters a "hot spot", it emits a burst of light.
       
-      float speed = 4.0; 
-      float scale = 8.0;
+      float speed = 2.0; // Slower shimmer for dreamier effect
+      float scale = 6.0;
       
       // Simple 3D interference pattern
       float noise = sin(vPos.x * scale + uTime * speed) * 
@@ -74,7 +74,7 @@ const particleShader = {
       // Apply Sparkle: Boost brightness significantly with a warm white tint
       // This creates the illusion of small explosions or collisions
       if (spark > 0.01) {
-        finalColor += vec3(1.0, 0.9, 0.7) * spark * 1.2;
+        finalColor += vec3(1.0, 0.9, 0.8) * spark * 1.0;
       }
 
       gl_FragColor = vec4(finalColor, glow);
@@ -114,35 +114,35 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter }) => {
 
     // Explicitly distinct palettes for each type
     const palettes: Record<ShapeType, THREE.Color[]> = {
-      // Saturn: Unified Elegant Beige/Gold
+      // Saturn: Unified Elegant Beige/Gold/Soft Pink
       [ShapeType.SATURN]: [
         new THREE.Color('#E6DBAC'), // Soft Beige (Rings)
-        new THREE.Color('#D4AF37'), // Metallic Gold (Body)
+        new THREE.Color('#E0B0FF'), // Mauve (Dreamy addition)
         new THREE.Color('#F5F5DC')  // Cream (Highlights)
       ],
       // Heart: Updated Brighter Pink/Red Palette for better Bloom
       [ShapeType.HEART]: [
-        new THREE.Color('#FF4D4D'), // Bright Red (Brighter than #FF0000)
-        new THREE.Color('#FF1493'), // Deep Pink (Vibrant)
-        new THREE.Color('#FFB6C1')  // Light Pink (High Luminance for Glow)
+        new THREE.Color('#FF4D4D'), // Bright Red
+        new THREE.Color('#FF1493'), // Deep Pink
+        new THREE.Color('#FFB6C1')  // Light Pink
       ],
       // Cake: Warm Pastel & Fire
       [ShapeType.CAKE]: [
         new THREE.Color('#F5DEB3'), // Wheat/Cream
         new THREE.Color('#FFB6C1'), // Light Pink Frosting
-        new THREE.Color('#FF4500')  // Orange Red (Flame)
+        new THREE.Color('#FF8C00')  // Dark Orange (Warmth)
       ],
-      // Snowflake: Icy Cyan
+      // Snowflake: Icy Cyan & Purple
       [ShapeType.SNOWFLAKE]: [
-        new THREE.Color('#00FFFF'), // Cyan
         new THREE.Color('#E0FFFF'), // Light Cyan
+        new THREE.Color('#E6E6FA'), // Lavender (Dreamy)
         new THREE.Color('#FFFFFF')  // White
       ],
-      // Text: NEON PURPLE THEME (Vibrant & Solid)
+      // Text: NEON PURPLE THEME
       [ShapeType.TEXT]: [
-        new THREE.Color('#D800FF'), // Neon Purple (Crisp)
-        new THREE.Color('#8A2BE2'), // Blue Violet (Depth)
-        new THREE.Color('#E6E6FA')  // Lavender (Accent - removed dark tones)
+        new THREE.Color('#D800FF'), // Neon Purple
+        new THREE.Color('#9370DB'), // Medium Purple
+        new THREE.Color('#E6E6FA')  // Lavender
       ],
     };
 
@@ -183,10 +183,8 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter }) => {
 
       // --- SIZES ---
       if (shape === ShapeType.TEXT) {
-          // TEXT SPECIFIC: Uniform, larger size for solidity/clarity
           sizeArray[i] = 0.12 + Math.random() * 0.04; 
       } else {
-          // STANDARD DUSTY LOOK for other shapes
           const sRand = Math.random();
           if (sRand > 0.995) {
               sizeArray[i] = Math.random() * 0.25 + 0.15; // Flares
@@ -244,15 +242,16 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter }) => {
       let ty = targetPositions[iy];
       let tz = targetPositions[iz];
 
-      const floatSpeed = 0.08; 
+      // SLOWED DOWN FLOAT SPEED FOR DREAMY VIBE
+      const floatSpeed = 0.05; 
       
-      tx += Math.sin(time * 0.3 + ty * 0.5) * 0.05 * floatSpeed;
-      ty += Math.cos(time * 0.2 + tx * 0.5) * 0.05 * floatSpeed;
-      tz += Math.sin(time * 0.25 + tx * 0.3) * 0.05 * floatSpeed;
+      tx += Math.sin(time * 0.2 + ty * 0.4) * 0.05 * floatSpeed;
+      ty += Math.cos(time * 0.15 + tx * 0.4) * 0.05 * floatSpeed;
+      tz += Math.sin(time * 0.18 + tx * 0.2) * 0.05 * floatSpeed;
 
       if (!isTextMode) {
         // --- Independent Particle Rotation (ONLY for non-text) ---
-        const rotFreq = 0.2; 
+        const rotFreq = 0.15; 
         const rotAmp = 0.12; 
         const rotPhase = i * 0.137; 
         
@@ -261,8 +260,7 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter }) => {
         tz += Math.sin(time * rotFreq * 0.7 + rotPhase) * rotAmp;
       } else {
         // --- Text Wave Effect ---
-        // A subtle sine wave based on X position, like a flag waving gently
-        tz += Math.sin(time * 1.5 + tx * 0.3) * 0.3;
+        tz += Math.sin(time * 1.2 + tx * 0.3) * 0.3;
       }
 
       if (isScatter) {
@@ -288,7 +286,7 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter }) => {
           tz += force * 0.8; 
       }
 
-      const lerpFactor = isScatter ? 0.02 : 0.08;
+      const lerpFactor = isScatter ? 0.02 : 0.06; // Slightly slower lerp for smoothness
       
       positions[ix] += (tx - positions[ix]) * lerpFactor;
       positions[iy] += (ty - positions[iy]) * lerpFactor;
@@ -299,24 +297,16 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter }) => {
     
     // --- Global Rotation Logic ---
     if (shape === ShapeType.TEXT) {
-       // Force text to face the camera so it is always readable
        pointsRef.current.lookAt(state.camera.position);
     } else if (shape === ShapeType.SATURN) {
        pointsRef.current.rotation.x = 0.1;
-       // Reset rotation to 0 relative to shape appearance for consistent "Front" view
-       pointsRef.current.rotation.y = shapeElapsed * 0.05; 
+       pointsRef.current.rotation.y = shapeElapsed * 0.04; // Slower rotation
        pointsRef.current.rotation.z = 0.05;
     } else {
-       // IMPORTANT: Reset X rotation to 0 to prevent upside down artifacts.
        pointsRef.current.rotation.x = 0; 
-       
-       // "Micro-side view" Start:
-       // Start at a slight angle (e.g., ~25 degrees) so the user sees 3D depth immediately.
-       // Then rotate slowly. This prevents the "waiting for front view" issue.
        const initialY = Math.PI * 0.15; 
-       pointsRef.current.rotation.y = initialY + shapeElapsed * 0.08;
-       
-       pointsRef.current.rotation.z = Math.sin(time * 0.1) * 0.03;
+       pointsRef.current.rotation.y = initialY + shapeElapsed * 0.06; // Slower rotation
+       pointsRef.current.rotation.z = Math.sin(time * 0.08) * 0.03;
     }
   });
 
