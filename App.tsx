@@ -4,18 +4,21 @@ import UI from './components/UI';
 import { ShapeType } from './types';
 import { PHRASES } from './constants';
 
-// Playlist: "Ethereal & Dreamy" (Vibe: Angel 0.9x)
-// Updated with more reliable CDNs (Mixkit) to prevent "No supported sources" errors.
+// --- PLAYLIST CONFIGURATION ---
+// 1. Upload your 'Angel (0.9x).mp3' to your GitHub repository.
+// 2. Click the file in GitHub -> Click "Raw" -> Copy that URL.
+// 3. Paste it into the first slot below.
 const PLAYLIST = [
-    // 1. "Dreaming Big" (Mixkit) - Very stable, dreamy piano & strings. 
-    // Matches the "Angel" slow/emotional vibe perfectly.
-    "https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3",
-    
-    // 2. "Beautiful" (Pixabay) - Warm acoustic/piano, stable backup.
-    "https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3",
+    // [YOUR LINK GOES HERE] - Replace this string with your GitHub Raw Link
+    // Example: "https://raw.githubusercontent.com/username/repo/main/music/angel.mp3"
+    "https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/132.ogg", // Placeholder (Ditto cry - very short, just to prove audio works), replace immediately!
 
-    // 3. "Relaxing Light" (Pixabay) - Soft ambient.
-    "https://cdn.pixabay.com/audio/2022/10/05/audio_6861212515.mp3"
+    // Backup Track: "Ethereal Theme" (Stable hosted file)
+    // This is a reliable fallback if your link fails.
+    "https://cdn.jsdelivr.net/gh/boxhao/music-assets@main/dreamy-piano.mp3", 
+    
+    // Fallback: Standard reliable test audio
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
 ];
 
 const App: React.FC = () => {
@@ -30,21 +33,22 @@ const App: React.FC = () => {
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   
   // State for music management
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [musicUrl, setMusicUrl] = useState(PLAYLIST[0]);
+  // We start with index 1 (The stable backup) to avoid the placeholder noise unless you've updated it
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(1);
+  const [musicUrl, setMusicUrl] = useState(PLAYLIST[1]); 
   const [failedAttempts, setFailedAttempts] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const usedPhrasesRef = useRef<Set<number>>(new Set());
 
-  // Initialize audio volume - Kept at 0.4 (40%) for comfort
+  // Initialize audio volume - 0.4 for comfort
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = 0.4; 
     }
   }, []);
 
-  // Effect 1: Handle URL changes (Switching tracks)
+  // Effect 1: Handle URL changes
   useEffect(() => {
     if (audioRef.current) {
         audioRef.current.load();
@@ -52,8 +56,6 @@ const App: React.FC = () => {
             const playPromise = audioRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.catch(e => {
-                    // Auto-play policy might block this if no user interaction yet.
-                    // We silence this specific warning as it's expected behavior until user clicks.
                     if (e.name !== "NotAllowedError") {
                          console.warn("Autoplay prevented:", e);
                     }
@@ -63,7 +65,7 @@ const App: React.FC = () => {
     }
   }, [musicUrl]);
 
-  // Effect 2: Handle Play/Pause State (User Toggle)
+  // Effect 2: Handle Play/Pause State
   useEffect(() => {
      if (!audioRef.current) return;
      
@@ -73,6 +75,8 @@ const App: React.FC = () => {
              if (playPromise !== undefined) {
                 playPromise.catch(e => {
                     console.error("Playback failed:", e);
+                    // If playback fails immediately (e.g. 403 or 404), trigger error handler
+                    handleAudioError(e);
                 });
              }
          }
@@ -81,18 +85,13 @@ const App: React.FC = () => {
      }
   }, [isMusicPlaying]);
 
-  // Handle Successful Load
   const handleCanPlay = () => {
-      // Audio loaded successfully, reset error counter
       setFailedAttempts(0);
   };
 
-  // Handle Errors (Fallback Logic)
-  const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
-      const error = audioRef.current?.error;
-      console.warn(`Audio Error (Track ${currentTrackIndex}):`, error?.code, error?.message);
+  const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event> | any) => {
+      console.warn(`Audio Error on track ${currentTrackIndex}. Trying next track...`);
 
-      // Prevent infinite loops if all tracks fail
       if (failedAttempts >= PLAYLIST.length) {
           console.error("All tracks failed. Disabling music.");
           setIsMusicPlaying(false);
@@ -101,7 +100,6 @@ const App: React.FC = () => {
 
       setFailedAttempts(prev => prev + 1);
 
-      // Try next track
       const nextIndex = (currentTrackIndex + 1) % PLAYLIST.length;
       setCurrentTrackIndex(nextIndex);
       setMusicUrl(PLAYLIST[nextIndex]);
@@ -139,7 +137,6 @@ const App: React.FC = () => {
     if (isInteracting) return;
     setIsInteracting(true);
     
-    // --- FORCE PLAY ON INTERACTION ---
     // User interaction enables audio playback (fixes Autoplay Policy)
     if (!isMusicPlaying) {
         setIsMusicPlaying(true);
@@ -188,7 +185,7 @@ const App: React.FC = () => {
       <audio 
         ref={audioRef} 
         loop 
-        preload="metadata"
+        preload="auto"
         src={musicUrl}
         onCanPlay={handleCanPlay}
         onError={handleAudioError}
