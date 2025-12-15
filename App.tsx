@@ -4,22 +4,14 @@ import UI from './components/UI';
 import { ShapeType } from './types';
 import { PHRASES } from './constants';
 
-// Fixed sequence
 const PHRASE_SEQUENCE = [2, 1, 0, 4, 6, 5, 7, 8, 3];
 
-// --- AUDIO SOURCES CONFIGURATION ---
-// PRODUCTION READY
-// Added timestamp to force cache refresh in case of recent renames
 const CACHE_BUSTER = new Date().getTime(); 
 
 const AUDIO_SOURCES = [
-  // 1. GitHack Development (Most reliable for immediate updates & MIME types)
   `https://raw.githack.com/LoveZuBlue/OoOoK/main/BGM.mp3?v=${CACHE_BUSTER}`,
-  // 2. JsDelivr - Main Branch (Fast, but might have 5-10min cache delay)
   `https://cdn.jsdelivr.net/gh/LoveZuBlue/OoOoK@main/BGM.mp3?v=${CACHE_BUSTER}`,
-  // 3. Raw GitHub (Fallback, depends on browser strictness)
   `https://raw.githubusercontent.com/LoveZuBlue/OoOoK/main/BGM.mp3?v=${CACHE_BUSTER}`,
-  // 4. Guaranteed Safety Net (High quality ambient track from Pixabay)
   "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" 
 ];
 
@@ -31,43 +23,36 @@ const App: React.FC = () => {
   
   const [isInteracting, setIsInteracting] = useState(false);
   const [unlockedCount, setUnlockedCount] = useState(0);
+
+  // Updated State: 'forming' indicates particles are gathering, 'present' is ready to click
+  const [giftStage, setGiftStage] = useState<'idle' | 'forming' | 'present' | 'shaking' | 'open'>('idle');
   
-  // --- AUDIO LOGIC ---
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
-  // Status: 'init' -> 'loading' -> 'success' (ready to play) or 'error' (all failed)
   const [audioStatus, setAudioStatus] = useState<'init' | 'loading' | 'success' | 'error'>('loading');
   
   const sequenceStepRef = useRef(0);
 
-  // Handle errors during streaming
   const handleAudioError = () => {
     console.warn(`Audio source failed: ${AUDIO_SOURCES[currentSourceIndex]}`);
-    
     if (currentSourceIndex < AUDIO_SOURCES.length - 1) {
-      console.log(`Switching to backup source ${currentSourceIndex + 1}...`);
       setAudioStatus('loading');
       setCurrentSourceIndex(prev => prev + 1);
     } else {
-      console.error("All audio sources failed.");
       setAudioStatus('error');
     }
   };
 
-  // Called when the browser has loaded enough data to begin playback
   const handleCanPlay = () => {
     if (audioStatus !== 'success') {
-      console.log("Audio ready to play!");
       setAudioStatus('success');
     }
   };
 
-  // Toggle Logic
   const toggleMusic = () => {
     if (!audioRef.current || audioStatus !== 'success') return;
-    
     if (isMusicPlaying) {
       audioRef.current.pause();
       setIsMusicPlaying(false);
@@ -84,11 +69,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Interaction Handler
   const handleNextInteraction = () => {
-    // Attempt Auto-Play on First Interaction
-    // We check audioStatus here. If it's success, we play. 
-    // If it's still loading, the browser won't play yet, but the user has "blessed" the page with a click.
     if (!isMusicPlaying && audioRef.current && audioStatus === 'success') {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
@@ -106,34 +87,80 @@ const App: React.FC = () => {
       ShapeType.SATURN,
       ShapeType.SNOWFLAKE,
       ShapeType.CAKE, 
-      ShapeType.HEART
+      ShapeType.HEART,
+      ShapeType.PUPPY 
     ];
     
-    const currentIndex = sequence.indexOf(currentShape);
-    const nextIndex = (currentIndex + 1) % sequence.length;
-    const nextShape = sequence[nextIndex];
+    // Check if we are done with all phrases
+    const nextCount = unlockedCount + 1;
+    let nextShape: ShapeType;
+    let nextPhrase = "";
+
+    if (nextCount > PHRASES.length) {
+        // Time for the Gift Box!
+        nextShape = ShapeType.GIFT_BOX;
+        nextPhrase = "A Surprise for You...";
+    } else {
+        // Standard Sequence
+        const currentIndex = sequence.indexOf(currentShape);
+        const nextIndex = (currentIndex + 1) % sequence.length;
+        nextShape = sequence[nextIndex];
+        
+        const currentStep = sequenceStepRef.current;
+        const phraseIndex = PHRASE_SEQUENCE[currentStep % PHRASE_SEQUENCE.length];
+        nextPhrase = PHRASES[phraseIndex];
+    }
 
     setIsScatter(true);
     
-    const currentStep = sequenceStepRef.current;
-    const phraseIndex = PHRASE_SEQUENCE[currentStep % PHRASE_SEQUENCE.length];
-    const nextPhrase = PHRASES[phraseIndex];
+    if (nextCount <= PHRASES.length) {
+        sequenceStepRef.current += 1;
+    }
+    setUnlockedCount(nextCount);
     
     setPhrase(nextPhrase);
-    
-    sequenceStepRef.current += 1;
-    setUnlockedCount(Math.min(sequenceStepRef.current, PHRASES.length));
-    
     setShowPhrase(true);
 
     setTimeout(() => {
       setCurrentShape(nextShape);
+      
+      // If we just switched to Gift Box, set stage to FORMING (Button disabled)
+      if (nextShape === ShapeType.GIFT_BOX) {
+          setGiftStage('forming');
+      }
+
       setTimeout(() => {
         setIsScatter(false);
+        // Hide phrase to let UI focus on the object/gift
         setShowPhrase(false);
         setIsInteracting(false);
+
+        // Once scatter is done, if it's the gift, enable the button
+        if (nextShape === ShapeType.GIFT_BOX) {
+            setGiftStage('present');
+        }
       }, 3500); 
     }, 800);
+  };
+
+  const handleOpenGift = () => {
+      // 1. Start Shaking
+      setGiftStage('shaking');
+      
+      // 2. Wait for shake animation (3 seconds for drama)
+      setTimeout(() => {
+          // 3. Explode into Scroll
+          setIsScatter(true);
+          setGiftStage('open');
+          setCurrentShape(ShapeType.SCROLL);
+          
+          setPhrase("Happy Birthday, My Love");
+          setShowPhrase(true); // Show final message
+
+          setTimeout(() => {
+             setIsScatter(false);
+          }, 1500);
+      }, 3000);
   };
 
   const toggleFullscreen = () => {
@@ -148,11 +175,6 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen bg-slate-900 overflow-hidden">
-      {/* 
-         Native HTML5 Audio Element 
-         key={currentSourceIndex} forces React to tear down and recreate the tag when source changes,
-         ensuring a fresh load attempt.
-      */}
       <audio 
         ref={audioRef}
         key={currentSourceIndex} 
@@ -164,7 +186,11 @@ const App: React.FC = () => {
         crossOrigin="anonymous" 
       />
 
-      <Scene currentShape={currentShape} isScatter={isScatter} />
+      <Scene 
+        currentShape={currentShape} 
+        isScatter={isScatter} 
+        isShaking={giftStage === 'shaking'} 
+      />
       
       <UI 
         onTriggerNext={handleNextInteraction} 
@@ -172,11 +198,13 @@ const App: React.FC = () => {
         showPhrase={showPhrase}
         onToggleFullscreen={toggleFullscreen}
         isInteracting={isInteracting}
-        unlockedCount={unlockedCount}
+        unlockedCount={Math.min(unlockedCount, PHRASES.length)} 
         totalPhrases={PHRASES.length}
         isMusicPlaying={isMusicPlaying}
         onToggleMusic={toggleMusic}
         audioStatus={audioStatus}
+        giftStage={giftStage}
+        onOpenGift={handleOpenGift}
       />
     </div>
   );

@@ -3,20 +3,22 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, Sparkles } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import Particles from './Particles';
+import FloatingPetals from './FloatingPetals';
 import { ShapeType } from '../types';
 
 interface SceneProps {
   currentShape: ShapeType;
   isScatter: boolean;
+  isShaking?: boolean;
 }
 
-const Scene: React.FC<SceneProps> = ({ currentShape, isScatter }) => {
+const Scene: React.FC<SceneProps> = ({ currentShape, isScatter, isShaking }) => {
   return (
     <Canvas
       camera={{ position: [0, 0, 22], fov: 50 }}
-      dpr={[1, 2]} // Support high DPI screens for sharper particles
+      dpr={[1, 2]} 
       className="w-full h-full block"
-      gl={{ antialias: false, alpha: false, stencil: false, depth: false }} // Optimization for postprocessing
+      gl={{ antialias: false, alpha: false, stencil: false, depth: false }} 
     >
       {/* 1. Deep Romantic Background Color (Midnight Purple) */}
       <color attach="background" args={['#0b0214']} />
@@ -37,11 +39,14 @@ const Scene: React.FC<SceneProps> = ({ currentShape, isScatter }) => {
         size={3} 
         speed={0.3} 
         opacity={0.4} 
-        color="#ffc4dd" // Light pink sparkles
+        color="#ffc4dd" 
       />
 
       {/* Main Particle System */}
-      <Particles shape={currentShape} isScatter={isScatter} />
+      <Particles shape={currentShape} isScatter={isScatter} isShaking={isShaking} />
+      
+      {/* Romantic Atmosphere for Gift */}
+      <FloatingPetals currentShape={currentShape} isScatter={isScatter} />
       
       {/* Post Processing for the "Ethereal" Glow */}
       <EffectComposer disableNormalPass>
@@ -62,7 +67,7 @@ const Scene: React.FC<SceneProps> = ({ currentShape, isScatter }) => {
         enablePan={false} 
         enableRotate={true}
         zoomSpeed={0.3}
-        rotateSpeed={0.3} // Slower rotation for elegance
+        rotateSpeed={0.3} 
         autoRotate={false} 
         autoRotateSpeed={0.5} 
         maxDistance={40}

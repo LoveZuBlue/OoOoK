@@ -16,21 +16,49 @@ export const PHRASES = [
 
 // --- Math Helpers ---
 
-// Increased particle count for a "luxurious" high-end density
-const PARTICLE_COUNT = 30000; 
+const PARTICLE_COUNT = 55000; 
 
-// Helper: Surface Only Distribution (More defined, less foggy)
+// Helper: Surface Only Distribution
 const getSurfacePoint = (r: number) => {
   const theta = Math.random() * Math.PI * 2;
   const phi = Math.acos(2 * Math.random() - 1);
-  // Add very slight noise for "fuzzy skin" but keep mostly on surface
-  const noise = 1.0 + (Math.random() - 0.5) * 0.05; 
-  const rad = r * noise;
-  
-  const x = rad * Math.sin(phi) * Math.cos(theta);
-  const y = rad * Math.sin(phi) * Math.sin(theta);
-  const z = rad * Math.cos(phi);
+  const x = r * Math.sin(phi) * Math.cos(theta);
+  const y = r * Math.sin(phi) * Math.sin(theta);
+  const z = r * Math.cos(phi);
   return { x, y, z };
+};
+
+// Helper: Volume Point
+const getVolumePoint = (r: number) => {
+  const u = Math.random();
+  const v = Math.random();
+  const theta = 2 * Math.PI * u;
+  const phi = Math.acos(2 * v - 1);
+  const rRand = r * Math.pow(Math.random(), 0.33); 
+  const x = rRand * Math.sin(phi) * Math.cos(theta);
+  const y = rRand * Math.sin(phi) * Math.sin(theta);
+  const z = rRand * Math.cos(phi);
+  return { x, y, z };
+};
+
+// Helper: Box Surface Point
+const getBoxSurfacePoint = (w: number, h: number, d: number) => {
+  const hw = w / 2, hh = h / 2, hd = d / 2;
+  const areaXY = w * h; 
+  const areaXZ = w * d; 
+  const areaYZ = h * d; 
+  const total = 2 * (areaXY + areaXZ + areaYZ);
+  const r = Math.random() * total;
+
+  if (r < 2 * areaXY) {
+    return { x: (Math.random() - 0.5) * w, y: (Math.random() - 0.5) * h, z: r < areaXY ? hd : -hd };
+  } else if (r < 2 * (areaXY + areaXZ)) {
+    const r2 = r - 2 * areaXY;
+    return { x: (Math.random() - 0.5) * w, y: r2 < areaXZ ? hh : -hh, z: (Math.random() - 0.5) * d };
+  } else {
+    const r3 = r - 2 * (areaXY + areaXZ);
+    return { x: r3 < areaYZ ? hw : -hw, y: (Math.random() - 0.5) * h, z: (Math.random() - 0.5) * d };
+  }
 };
 
 // Shape Generators
@@ -42,225 +70,330 @@ export const getShapePositions = (type: ShapeType): Float32Array => {
 
     switch (type) {
       case ShapeType.SATURN: {
-        const r = Math.random();
-        
-        // 35% Planet Body, 65% Rings for a grander look
-        if (r < 0.35) {
-          // --- Planet Body ---
-          const radius = 3.0; 
-          const p = getSurfacePoint(radius);
-          x = p.x;
-          y = p.y;
-          z = p.z;
+        if (i < 16000) {
+           const r = 3.2; 
+           const p = getSurfacePoint(r);
+           x = p.x; y = p.y; z = p.z;
         } else {
-          // --- Rings ---
-          const angle = Math.random() * Math.PI * 2;
-          
-          // Generate precise bands to simulate C, B, A rings and Cassini Division
-          const bandType = Math.random();
-          let dist = 0;
+           const ringIndex = i - 16000;
+           const ringTotal = PARTICLE_COUNT - 16000;
+           const progress = ringIndex / ringTotal; 
+           let dist = 0;
+           if (progress < 0.2) dist = 4.5 + Math.random() * 1.8;
+           else if (progress < 0.65) dist = 6.8 + Math.random() * 2.5;
+           else if (progress < 0.70) dist = 9.4 + Math.random() * 0.2; 
+           else dist = 9.8 + Math.random() * 1.5;
 
-          if (bandType < 0.15) {
-              // C Ring (Inner, faint)
-              dist = 4.2 + Math.random() * 1.0;
-          } else if (bandType < 0.65) {
-              // B Ring (Main, bright, dense)
-              dist = 5.4 + Math.random() * 2.2;
-          } else if (bandType < 0.70) {
-              // Cassini Division (Empty-ish gap)
-              // We barely put particles here to create the dark gap look
-              if (Math.random() > 0.8) dist = 7.7 + Math.random() * 0.3;
-              else dist = 5.4 + Math.random() * 2.2; // Fallback to B ring to keep density high
-          } else {
-              // A Ring (Outer)
-              dist = 8.1 + Math.random() * 1.5;
-          }
-
-          // Initial flat disk on XZ plane
-          let rx = Math.cos(angle) * dist;
-          let rz = Math.sin(angle) * dist;
-          // Extremely thin vertical profile for "razor sharp" rings
-          let ry = (Math.random() - 0.5) * 0.05; 
-
-          // --- Tilt Logic ---
-          // Rotate around X-axis by ~27 degrees
-          const tilt = 27 * (Math.PI / 180);
-          const ca = Math.cos(tilt);
-          const sa = Math.sin(tilt);
-
-          // Apply rotation matrix
-          // y' = y*cos - z*sin
-          // z' = y*sin + z*cos
-          
-          let yFinal = ry * ca - rz * sa;
-          let zFinal = ry * sa + rz * ca;
-          
-          x = rx; 
-          y = yFinal;
-          z = zFinal;
+           const angle = Math.random() * Math.PI * 2;
+           x = Math.cos(angle) * dist;
+           z = Math.sin(angle) * dist;
+           y = (Math.random() - 0.5) * 0.1; 
         }
         break;
       }
       case ShapeType.HEART: {
-        // Classic Heart Parametric Equation for sharper silhouette
-        // x = 16 sin^3(t)
-        // y = 13 cos(t) - 5 cos(2t) - 2 cos(3t) - cos(4t)
-        
         const t = Math.random() * Math.PI * 2;
         const hx = 16 * Math.pow(Math.sin(t), 3);
-        const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-        
-        const r = Math.random();
+        const hy = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t);
         let scale = 1;
+        const r = Math.random();
+        if (r < 0.6) scale = 0.98 + Math.random() * 0.02; 
+        else scale = Math.pow(Math.random(), 0.5) * 0.95; 
         
-        // 50% Shell for crisp definition (Lobes will be very distinct)
-        if (r < 0.5) {
-             scale = 0.96 + Math.random() * 0.04; // Very thin shell
-        } else {
-             // Volume: scale down towards center (0,0)
-             // Using sqrt keeps density reasonably high near edges, preventing "hollow" look
-             scale = Math.sqrt(Math.random()) * 0.95;
-        }
-
-        // Apply scale to the 2D heart profile
         x = hx * scale;
-        y = hy * scale;
-
-        // Center the heart vertically
-        // The formula range is approx [-17, 13]. Midpoint is around -2.
-        y += 2.0;
-
-        // Z-Axis Logic (3D Puffiness)
-        // Taper thickness: Thicker at the top lobes, thinner at the bottom tip.
-        // Normalized Height (0 at bottom, 1 at top)
-        const normY = (hy + 17) / 30; 
-        
-        // Depth profile: ranges from ~2.0 at bottom to ~8.0 at top
-        const depth = 2.0 + normY * 6.0; 
-        
-        // Random Z within the tapered depth, scaled by overall size
-        // This gives it a rounded, pillow-like 3D form
+        y = (hy + 2.0) * scale;
+        const normY = (hy + 17) / 30;
+        const depth = 3.5 + normY * 6.0; 
         z = (Math.random() - 0.5) * depth * scale;
-
-        // Global Scale to fit scene
         const s = 0.35;
-        x *= s;
-        y *= s;
-        z *= s;
+        x *= s; y *= s; z *= s;
+        break;
+      }
+      case ShapeType.PUPPY: {
+        // --- RESTORED DETAILED PUPPY ---
+        // Parts: Head, Snout, Body, Legs, Tail, Ears
+        
+        const randFuzz = () => (Math.random() - 0.5) * 0.15; // Fur fuzz
+
+        if (i < 12000) {
+            // HEAD (Sphere)
+            const p = getVolumePoint(1.8);
+            x = p.x; y = p.y + 2.5; z = p.z + 1.0;
+        } else if (i < 15000) {
+            // SNOUT (Smaller Sphere, pushed forward)
+            const p = getVolumePoint(0.8);
+            x = p.x; y = p.y + 2.2; z = p.z + 2.6;
+        } else if (i < 18000) {
+            // EARS (Flaps)
+            const isLeft = Math.random() > 0.5;
+            const side = isLeft ? 1 : -1;
+            const t = Math.random(); // 0 to 1 down the ear
+            
+            // Ear hangs down from side of head
+            x = (side * 1.5) + (Math.random()-0.5)*0.3; 
+            y = 3.5 - (t * 2.5); // Hang down
+            z = 1.0 + (Math.random()-0.5)*0.5;
+            
+            // Curve ear slightly out
+            x += side * Math.sin(t*Math.PI) * 0.5;
+        } else if (i < 30000) {
+            // BODY (Oblong Sphere)
+            const p = getVolumePoint(2.6);
+            x = p.x * 0.9; // Narrower width
+            y = p.y * 0.8; // Squashed slightly
+            z = p.z * 1.4 - 1.5; // Longer body, shifted back
+        } else if (i < 40000) {
+            // LEGS (4 Cylinders)
+            const leg = Math.floor(Math.random() * 4); // 0=FL, 1=FR, 2=BL, 3=BR
+            const isFront = leg < 2;
+            const isLeft = leg % 2 === 0;
+            
+            const lx = isLeft ? -1.2 : 1.2;
+            const lz = isFront ? 1.0 : -3.5;
+            const h = 2.5; // Leg height
+            
+            const r = Math.sqrt(Math.random()) * 0.5; // Leg thickness
+            const theta = Math.random() * Math.PI * 2;
+            
+            x = lx + r * Math.cos(theta);
+            z = lz + r * Math.sin(theta);
+            y = -2.5 + (Math.random() * h); // Floor to body
+        } else {
+            // TAIL (Curved line/tube)
+            const t = Math.random(); 
+            const tailLen = 2.0;
+            
+            // Base of tail at back of body
+            const bx = 0; const by = 0.5; const bz = -4.5;
+            
+            // Wag curve
+            const wag = Math.sin(t * 3.0) * 0.5;
+            
+            x = bx + wag + (Math.random()-0.5)*0.2;
+            y = by + (t * tailLen); // Upwards
+            z = bz - (t * 0.5); // Slightly back
+        }
+        
+        // Apply fuzz to everything for fur effect
+        x += randFuzz(); y += randFuzz(); z += randFuzz();
         break;
       }
       case ShapeType.CAKE: {
-        // Grand Two-Tier Cake with Frosting and Candles
-        const part = Math.random();
+        // --- RESTORED TIERED CAKE ---
+        const tier1Limit = 16000;
+        const tier2Limit = 26000;
+        const frostingLimit = 35000;
+        const candleBodyLimit = 40000;
         
-        if (part < 0.45) { 
-           // --- Bottom Tier (Large Cylinder) ---
-           const rMax = 4.0;
-           const hBase = -2.5;
-           const hTop = -0.5;
-           
-           if (Math.random() > 0.2) {
-               // Side Walls
-               const angle = Math.random() * Math.PI * 2;
-               x = rMax * Math.cos(angle);
-               z = rMax * Math.sin(angle);
-               y = hBase + Math.random() * (hTop - hBase);
-           } else {
-               // Surface/Frosting Rim
-               const angle = Math.random() * Math.PI * 2;
-               const r = rMax * Math.sqrt(Math.random());
-               x = r * Math.cos(angle);
-               z = r * Math.sin(angle);
-               y = hTop; // Top of bottom tier
-           }
-        } else if (part < 0.8) {
-           // --- Top Tier (Smaller Cylinder) ---
-           const rMax = 2.5;
-           const hBase = -0.5;
-           const hTop = 1.2;
-           
-           if (Math.random() > 0.3) {
-               // Walls
-               const angle = Math.random() * Math.PI * 2;
-               x = rMax * Math.cos(angle);
-               z = rMax * Math.sin(angle);
-               y = hBase + Math.random() * (hTop - hBase);
-           } else {
-               // Top Surface
-               const angle = Math.random() * Math.PI * 2;
-               const r = rMax * Math.sqrt(Math.random());
-               x = r * Math.cos(angle);
-               z = r * Math.sin(angle);
-               y = hTop;
-           }
-        } else if (part < 0.95) {
-           // --- Piping / Frosting Details ---
-           // Rings of particles at the edges of tiers
-           const angle = Math.random() * Math.PI * 2;
-           // Choose distinct rings
-           const r = Math.random() > 0.5 ? 4.0 : 2.5; 
-           const h = r === 4.0 ? -0.5 : 1.2;
-           
-           // Add "fluff"
-           x = (r + (Math.random()-0.5)*0.2) * Math.cos(angle);
-           z = (r + (Math.random()-0.5)*0.2) * Math.sin(angle);
-           y = h + (Math.random()-0.5) * 0.2; 
-        } else {
-           // --- Candles & Flames ---
-           // One central large candle or a ring of small ones? Let's do a central cluster.
-           const hBase = 1.2;
-           const hWick = 2.5;
-           
-           // Candle Body
-           if (Math.random() < 0.7) {
-               const r = Math.random() * 0.2; // Thin candle
-               const angle = Math.random() * Math.PI * 2;
-               x = r * Math.cos(angle);
-               z = r * Math.sin(angle);
-               y = hBase + Math.random() * (hWick - hBase);
-           } else {
-               // Flame (Teardrop shape)
-               const flameH = Math.random(); // 0 to 1
-               const flameW = Math.sin(flameH * Math.PI) * 0.15;
-               const angle = Math.random() * Math.PI * 2;
-               
-               x = flameW * Math.cos(angle);
-               z = flameW * Math.sin(angle);
-               y = hWick + flameH * 0.6; // Flame height
-           }
+        // Base Tier (Large Cylinder)
+        if (i < tier1Limit) {
+            const r = 3.5 * Math.sqrt(Math.random());
+            const theta = Math.random() * Math.PI * 2;
+            const h = 2.0;
+            x = r * Math.cos(theta);
+            z = r * Math.sin(theta);
+            y = -2.0 + Math.random() * h;
+        } 
+        // Top Tier (Medium Cylinder)
+        else if (i < tier2Limit) {
+            const r = 2.2 * Math.sqrt(Math.random());
+            const theta = Math.random() * Math.PI * 2;
+            const h = 1.5;
+            x = r * Math.cos(theta);
+            z = r * Math.sin(theta);
+            y = 0.0 + Math.random() * h;
+        } 
+        // Frosting/Decorations (Rings)
+        else if (i < frostingLimit) {
+            // Ring 1 (Base Top) or Ring 2 (Tier Top)
+            const isBase = Math.random() > 0.5;
+            const rBase = isBase ? 3.5 : 2.2;
+            const yBase = isBase ? 0.0 : 1.5;
+            
+            const theta = Math.random() * Math.PI * 2;
+            // Wavy frosting
+            const r = rBase + Math.sin(theta * 10) * 0.15 + (Math.random()-0.5)*0.1;
+            
+            x = r * Math.cos(theta);
+            z = r * Math.sin(theta);
+            y = yBase + (Math.random()-0.5)*0.15;
+        }
+        // Candle Body (Thin Cylinder)
+        else if (i < candleBodyLimit) {
+            const r = 0.15 * Math.sqrt(Math.random());
+            const theta = Math.random() * Math.PI * 2;
+            const h = 1.2;
+            x = r * Math.cos(theta);
+            z = r * Math.sin(theta);
+            y = 1.5 + Math.random() * h;
+        }
+        // Candle Flame (Teardrop shape)
+        else {
+            const t = Math.random();
+            // Flame shape: widest at bottom, point at top
+            const flameH = 0.6;
+            const flameW = 0.25;
+            const yPos = 1.5 + 1.2 + 0.1 + (t * flameH); // On top of candle
+            
+            // Width varies with height (parabola)
+            const w = Math.sin(t * Math.PI) * flameW;
+            const theta = Math.random() * Math.PI * 2;
+            const r = w * Math.sqrt(Math.random());
+            
+            x = r * Math.cos(theta);
+            z = r * Math.sin(theta);
+            y = yPos;
         }
         break;
       }
       case ShapeType.SNOWFLAKE: {
-        const armIndex = Math.floor(Math.random() * 6);
-        const armAngle = (armIndex / 6) * Math.PI * 2;
+        // --- 3D PRISM SNOWFLAKE ---
+        const armIndex = i % 6;
+        const baseAngle = (armIndex / 6) * Math.PI * 2;
         
-        let px = 0, py = 0;
-        const r = Math.random();
+        let u = 0, v = 0, w = 0;
+        const seed = Math.random();
         
-        if (r < 0.2) {
-             const d = Math.random() * 1.5;
-             const a = Math.random() * Math.PI * 2;
-             px = d * Math.cos(a); 
-             py = d * Math.sin(a) * 0.9;
-        } else if (r < 0.6) {
-             px = 1.5 + Math.random() * 6.0;
-             py = (Math.random() - 0.5) * 0.15;
-        } else {
-             const anchor = 2.5 + Math.floor(Math.random() * 3) * 1.8;
-             const branchLen = Math.random() * 1.5;
-             const side = Math.random() > 0.5 ? 1 : -1;
-             const angle = Math.PI / 3;
-             px = anchor + Math.cos(angle) * branchLen;
-             py = side * Math.sin(angle) * branchLen;
+        // A. MAIN CRYSTAL SPINE
+        if (seed < 0.40) {
+            u = Math.pow(Math.random(), 0.6) * 9.0; 
+            const widthAtU = 0.4 * (1.0 - u/10.0); 
+            v = (Math.random() - 0.5) * widthAtU;
+            w = (Math.random() - 0.5) * widthAtU * 1.5;
         }
-
-        const ca = Math.cos(armAngle);
-        const sa = Math.sin(armAngle);
-        x = px * ca - py * sa;
-        y = px * sa + py * ca;
-        z = (Math.random() - 0.5) * 0.2;
+        // B. PRIMARY BRANCHES
+        else if (seed < 0.80) {
+            const sets = 3; 
+            const setIndex = Math.floor(Math.random() * sets);
+            const rootU = 2.5 + setIndex * 2.2 + (Math.random() * 0.2);
+            const maxLen = (9.5 - rootU) * 0.7;
+            const len = Math.random() * maxLen;
+            const width = 0.2 * (1.0 - len/maxLen);
+            const side = Math.random() > 0.5 ? 1 : -1;
+            const angle = Math.PI / 3; 
+            const bu = Math.cos(angle) * len;
+            const bv = side * Math.sin(angle) * len;
+            u = rootU + bu;
+            v = bv + (Math.random()-0.5) * width;
+            w = (Math.random()-0.5) * width * 1.2; 
+        }
+        // C. SURFACE FROST
+        else {
+            const randU = Math.random() * 9.0;
+            const randV = (Math.random()-0.5) * 1.5; 
+            u = randU;
+            v = randV * (1.0 - randU/9.0);
+            w = (Math.random() > 0.5 ? 0.3 : -0.3); 
+        }
+        
+        const ca = Math.cos(baseAngle);
+        const sa = Math.sin(baseAngle);
+        x = u * ca - v * sa;
+        y = u * sa + v * ca;
+        z = w; 
+        z += Math.sin(x * 0.5) * 0.2; 
         break;
+      }
+      case ShapeType.GIFT_BOX: {
+         // --- HIGH DEFINITION GIFT BOX ---
+         const w = 7.0; 
+         const h = 6.0; 
+         const d = 7.0;
+         const boxEnd = 30000;
+         const ribbonEnd = 45000;
+         
+         if (i < boxEnd) {
+             const subSeed = Math.random();
+             if (subSeed < 0.3) {
+                 // Edges
+                 const edge = Math.floor(Math.random() * 12);
+                 const t = (Math.random() - 0.5); 
+                 const hw = w/2, hh = h/2, hd = d/2;
+                 if (edge < 4) { x = t * w; y = (edge&1 ? 1 : -1) * hh; z = (edge&2 ? 1 : -1) * hd; } 
+                 else if (edge < 8) { y = t * h; x = ((edge-4)&1 ? 1 : -1) * hw; z = ((edge-4)&2 ? 1 : -1) * hd; } 
+                 else { z = t * d; x = ((edge-8)&1 ? 1 : -1) * hw; y = ((edge-8)&2 ? 1 : -1) * hh; }
+                 x += (Math.random()-0.5)*0.1; y += (Math.random()-0.5)*0.1; z += (Math.random()-0.5)*0.1;
+             } else if (subSeed < 0.8) {
+                 // Faces
+                 const p = getBoxSurfacePoint(w, h, d);
+                 x = p.x; y = p.y; z = p.z;
+             } else {
+                 // Volume
+                 x = (Math.random()-0.5) * w; y = (Math.random()-0.5) * h; z = (Math.random()-0.5) * d;
+             }
+         } 
+         else if (i < ribbonEnd) {
+             const rw = 1.8; 
+             const offset = 0.2; 
+             if (Math.random() > 0.5) {
+                 x = (Math.random()-0.5) * rw;
+                 const pParam = Math.random() * (2*h + 2*d);
+                 if (pParam < h) { y = pParam - h/2; z = d/2 + offset; } 
+                 else if (pParam < h+d) { y = h/2 + offset; z = d/2 - (pParam-h); } 
+                 else if (pParam < 2*h+d) { y = h/2 - (pParam-(h+d)); z = -d/2 - offset; } 
+                 else { y = -h/2 - offset; z = -d/2 + (pParam-(2*h+d)); } 
+             } else {
+                 z = (Math.random()-0.5) * rw;
+                 const pParam = Math.random() * (2*h + 2*w);
+                 if (pParam < h) { y = pParam - h/2; x = w/2 + offset; } 
+                 else if (pParam < h+w) { y = h/2 + offset; x = w/2 - (pParam-h); } 
+                 else if (pParam < 2*h+w) { y = h/2 - (pParam-(h+w)); x = -w/2 - offset; } 
+                 else { y = -h/2 - offset; x = -w/2 + (pParam-(2*h+w)); } 
+             }
+         } 
+         else {
+             // Bow
+             const t = Math.random() * Math.PI * 2;
+             const bowY = (h/2) + 1.2;
+             const scale = 2.2;
+             const r = Math.sin(t * 2) * scale; 
+             let bx = r * Math.cos(t);
+             let bz = r * Math.sin(t);
+             let by = bowY + Math.abs(Math.cos(t*2)) * 1.5; 
+             const thick = 0.4;
+             bx += (Math.random()-0.5)*thick; bz += (Math.random()-0.5)*thick; by += (Math.random()-0.5)*thick;
+             x = bx; y = by; z = bz;
+             if (Math.random() < 0.2) { x *= 0.2; z *= 0.2; y = bowY + Math.random(); }
+         }
+         break;
+      }
+      case ShapeType.SCROLL: {
+          // --- SCROLL ---
+          const handleDist = 4.5; 
+          const handleH = 6.0;
+          const handleR = 0.6;
+          const paperW = handleDist * 2; 
+          const paperH = 4.5;
+          const handleEnd = 15000; 
+          
+          if (i < handleEnd) {
+              const isLeft = i < handleEnd / 2;
+              const cx = isLeft ? -handleDist : handleDist;
+              const r = Math.sqrt(Math.random()) * handleR;
+              const theta = Math.random() * Math.PI * 2;
+              const hy = (Math.random() - 0.5) * handleH;
+              x = cx + r * Math.cos(theta);
+              z = r * Math.sin(theta);
+              y = hy;
+              if (Math.abs(hy) > handleH * 0.45) {
+                   const knobR = handleR * 1.5;
+                   x = cx + (Math.sqrt(Math.random()) * knobR) * Math.cos(theta);
+                   z = (Math.sqrt(Math.random()) * knobR) * Math.sin(theta);
+              }
+          } 
+          else {
+              const u = Math.random(); 
+              const v = Math.random(); 
+              const px = (u - 0.5) * paperW; 
+              const py = (v - 0.5) * paperH;
+              const pz = Math.sin(px * 0.5) * 1.0 + Math.sin(py * 0.5) * 0.2;
+              x = px;
+              y = py;
+              z = pz;
+              z += (Math.random()-0.5) * 0.05;
+              if (v < 0.05 || v > 0.95) { z += 0.1; }
+          }
+          break;
       }
       case ShapeType.TEXT: {
          const p = getSurfacePoint(6);
@@ -276,7 +409,6 @@ export const getShapePositions = (type: ShapeType): Float32Array => {
   return positions;
 };
 
-// Helper to rasterize text to points
 export const generateTextParticles = (text: string): Float32Array => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
