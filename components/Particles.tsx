@@ -10,24 +10,27 @@ interface ParticlesProps {
   isShaking?: boolean;
 }
 
-// --- Shader with Puppy Wiggle & Gift Shake ---
+// --- Shader (BRIGHT & GLOWING, NO DARKNESS) ---
 const particleShader = {
   vertexShader: `
     attribute float size;
     attribute vec3 customColor;
     varying vec3 vColor;
-    varying vec3 vPos; 
+    varying float vBlink;
     uniform float uTime;
-    uniform float uWobble; // Used for Puppy wobble AND Shake effect
-    uniform float uShakeStrength; // Explicit shake control
+    uniform float uWobble; 
+    uniform float uShakeStrength; 
+    uniform float uSparkle;
     
     void main() {
       vColor = customColor;
       vec3 pos = position;
       
+      // Calculate random blink offset based on position
+      vBlink = sin(uTime * 3.0 + pos.x * 10.0 + pos.y * 5.0);
+
       // --- Gift Shake Logic ---
       if (uShakeStrength > 0.0) {
-         // Violent random vibration
          float s = uShakeStrength;
          pos.x += sin(uTime * 50.0 + pos.y) * 0.2 * s;
          pos.y += cos(uTime * 45.0 + pos.x) * 0.2 * s;
@@ -36,51 +39,47 @@ const particleShader = {
 
       // --- Puppy Animation Logic ---
       if (uWobble > 0.0 && uShakeStrength == 0.0) {
-          // Tail Wag (Particles roughly in tail zone: z < -1.5)
-          if (pos.z < -0.5 && pos.y < 0.0) {
-              float wag = sin(uTime * 8.0) * 0.1 * (abs(pos.z) + 0.5); 
+          // Tail Wag only
+          if (pos.y < -1.5 && pos.z < -1.5) {
+              float wag = sin(uTime * 9.0) * 0.25 * (abs(pos.x) + 0.5); 
               pos.x += wag;
-          }
-          // Head Tilt
-          if (pos.y > 1.5) {
-             float tilt = sin(uTime * 1.5) * 0.03;
-             float cx = pos.x * cos(tilt) - pos.y * sin(tilt);
-             float cy = pos.x * sin(tilt) + pos.y * cos(tilt);
-             pos.x = cx;
-             pos.y = cy;
           }
       }
       
-      vPos = pos; 
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       
-      gl_PointSize = size * (600.0 / -mvPosition.z);
+      // Base Size
+      float baseSize = size * (600.0 / -mvPosition.z);
+      gl_PointSize = baseSize;
       
-      // Subtle organic pulse
-      float pulse = sin(uTime * 1.5 + pos.y) * 0.1 + 0.95;
-      gl_PointSize *= pulse;
-
       gl_Position = projectionMatrix * mvPosition;
     }
   `,
   fragmentShader: `
     varying vec3 vColor;
-    varying vec3 vPos;
-    uniform float uTime;
+    varying float vBlink;
+    uniform float uSparkle;
     
     void main() {
+      // Glow Particle
       float d = distance(gl_PointCoord, vec2(0.5));
       if (d > 0.5) discard;
       
-      float glow = 1.0 - (d * 2.0);
-      glow = pow(glow, 2.5); // Sharper glow for crystal effect
-
-      vec3 finalColor = vColor * 1.3; 
+      // Softer falloff, higher core brightness
+      float glow = 1.0 - (d * 1.8);
+      glow = clamp(glow, 0.0, 1.0);
+      glow = pow(glow, 1.5); 
       
-      // Extra shine for center of particle
-      finalColor += vec3(0.2, 0.2, 0.2) * glow;
+      float alpha = glow * 0.9;
+      
+      // Icy Sparkle Effect for Snowflakes
+      if (uSparkle > 0.5) {
+          float sparkle = smoothstep(0.4, 1.0, vBlink);
+          alpha += sparkle * 0.5;
+      }
 
-      gl_FragColor = vec4(finalColor, glow * 0.9);
+      // High Alpha for visible, energetic particles
+      gl_FragColor = vec4(vColor, alpha); 
     }
   `
 };
@@ -107,78 +106,81 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
     return new Float32Array(targetPositions.length);
   }, [targetPositions.length]); 
 
-  // --- Color Mapping ---
+  // --- Color Mapping (Balanced brightness) ---
   const { colors, sizes } = useMemo(() => {
     const count = targetPositions.length / 3;
     const colorArray = new Float32Array(count * 3);
     const sizeArray = new Float32Array(count);
 
-    // Standard Colors
-    const cWhite = new THREE.Color('#ffffff');
+    // DETERMINE BRIGHTNESS MULTIPLIER
+    let brightnessMultiplier = 1.0;
     
-    // SATURN COLORS (More saturated, less messy)
-    const cSaturnBody = new THREE.Color('#FFC000'); // Vivid Gold/Amber
-    const cSaturnRing1 = new THREE.Color('#FF8C00'); // Dark Orange
-    const cSaturnRing2 = new THREE.Color('#FFD700'); // Gold
-    const cSaturnRing3 = new THREE.Color('#D2691E'); // Chocolate/Bronze saturated
-    const cSaturnShadow = new THREE.Color('#8B4500'); // Deep saturated shadow
+    if (shape === ShapeType.CAKE || shape === ShapeType.SNOWFLAKE) {
+        brightnessMultiplier = 0.45;
+    } else if (shape === ShapeType.GIFT_BOX) {
+        // Reduced significantly to prevent overexposure
+        brightnessMultiplier = 0.20; 
+    } else if (shape === ShapeType.PUPPY) {
+        brightnessMultiplier = 0.6;
+    }
 
-    // CAKE COLORS (Higher saturation)
-    const cCakeSponge = new THREE.Color('#F0B669'); // Saturated Sponge
-    const cCakeFrosting = new THREE.Color('#FF1493'); // Deep Pink
-    const cCakeFlame = new THREE.Color('#FF3300'); // Bright Red-Orange
+    // SATURN: MAGNIFICENT GOLD (Sand/Bright/Dark Gold)
+    const cSaturnBody = new THREE.Color('#F4C430'); // Saffron/Gold
+    const cSaturnRing1 = new THREE.Color('#FFD700'); // Pure Gold
+    const cSaturnRing2 = new THREE.Color('#DAA520'); // Goldenrod
+    const cSaturnRing3 = new THREE.Color('#F0E68C'); // Khaki highlight
 
-    const cHeartRed = new THREE.Color('#FF0033');
-    const cHeartPink = new THREE.Color('#FF1493');
-    const cHeartLightPink = new THREE.Color('#FFC0CB');
+    // CAKE
+    const cCakeSponge = new THREE.Color('#FFDEAD'); 
+    const cCakeFrosting = new THREE.Color('#FF69B4'); 
+    const cCakeFlame = new THREE.Color('#FF4500'); 
 
-    // PUPPY COLORS
-    const cGolden = new THREE.Color('#f5cc6c'); 
-    const cDarkGold = new THREE.Color('#c99834'); 
-    const cCream = new THREE.Color('#fff9eb'); 
-    const cBlack = new THREE.Color('#0a0a0a'); 
+    // PUPPY
+    const cGolden = new THREE.Color('#F4A460'); // Sandy Brown
+    const cCream = new THREE.Color('#FAEBD7'); // Antique White
+    const cFeature = new THREE.Color('#000000'); // Black Eyes
     
-    // GIFT BOX COLORS
-    const cBoxBody = new THREE.Color(0.35, 0.05, 0.08); // Richer Red
-    const cBoxEdge = new THREE.Color(0.60, 0.10, 0.15); // Highlighted Edge
-    const cBoxLid = new THREE.Color(0.40, 0.05, 0.10); 
-    const cBoxRibbon = new THREE.Color(0.80, 0.60, 0.10); // Bright Gold ribbon
+    // GIFT BOX
+    const cBoxBody = new THREE.Color('#FF69B4'); 
+    const cBoxEdge = new THREE.Color('#FF1493'); 
+    const cBoxRibbon = new THREE.Color('#FFFFFF'); 
     
-    // SCROLL COLORS
-    const cPaper = new THREE.Color('#F5E6C4'); // Cream/Beige
-    const cPaperEdge = new THREE.Color('#E6CFA0'); // Darker Beige
-    const cHandle = new THREE.Color('#3E2723'); // Dark Wood
-    const cHandleGold = new THREE.Color('#FFD700'); // Gold Knobs
-
-    // SNOWFLAKE: ICE COLORS (COLD & TRANSPARENT LOOK)
-    const cIceCore = new THREE.Color('#FFFFFF');
-    const cIceMid = new THREE.Color('#A5F2F3'); // Pale Cyan
-    const cIceEdge = new THREE.Color('#00CED1'); // Dark Turquoise
-    const cIceClear = new THREE.Color('#F0FFFF'); // Azure
+    // SNOWFLAKE
+    const cIceCore = new THREE.Color('#F0FFFF'); 
+    const cIceOuter = new THREE.Color('#E0FFFF'); 
+    const cIceEdge = new THREE.Color('#AFEEEE'); 
 
     const cPurple = new THREE.Color('#9370DB');
+    
+    // TEXT
+    const cSpaceDeep = new THREE.Color('#8A2BE2'); 
+    const cSpaceMid = new THREE.Color('#9400D3'); 
+    const cSpaceLight = new THREE.Color('#E6E6FA'); 
+    const cStar = new THREE.Color('#FFFFFF'); 
 
     for (let i = 0; i < count; i++) {
       let c = new THREE.Color('#ffffff');
-      let size = 0.1;
+      let size = 0.12;
+      
+      const x = targetPositions[i*3];
+      const y = targetPositions[i*3+1];
+      const z = targetPositions[i*3+2];
 
       if (shape === ShapeType.SATURN) {
-          if (i < 16000) {
+          if (i < 18000) {
              c = cSaturnBody;
-             if (Math.random() < 0.1) c = cSaturnRing3;
-             size = 0.18; 
+             size = 0.16; 
           } else {
-             const ringIndex = i - 16000;
-             const ringTotal = count - 16000;
+             const ringIndex = i - 18000;
+             const ringTotal = count - 18000;
              const progress = ringIndex / ringTotal;
              
-             if (progress < 0.2) c = cSaturnRing3;
-             else if (progress < 0.4) c = cSaturnRing1;
-             else if (progress < 0.6) c = cSaturnRing2;
-             else if (progress < 0.8) c = cSaturnRing1;
-             else c = cSaturnShadow; 
+             if (progress < 0.2) c = cSaturnRing2;
+             else if (progress < 0.5) c = cSaturnRing1; 
+             else if (progress < 0.8) c = cSaturnRing3;
+             else c = cSaturnRing2;
              
-             size = 0.12;
+             size = 0.10; 
           }
       } 
       else if (shape === ShapeType.CAKE) {
@@ -193,78 +195,88 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
       } 
       else if (shape === ShapeType.HEART) {
           const r = Math.random();
-          if (r < 0.6) c = cHeartRed;
-          else if (r < 0.9) c = cHeartPink;
-          else c = cHeartLightPink;
-          size = 0.15 + Math.random() * 0.1;
+          if (r < 0.6) c = new THREE.Color('#FF0000'); // Red
+          else c = new THREE.Color('#FF69B4'); // Hot Pink
+          size = 0.15;
       } 
       else if (shape === ShapeType.PUPPY) {
-          // Simplified puppy color logic
-          if (i < 15000) c = cGolden;
-          else if (i < 24000) c = cCream;
-          else c = cDarkGold;
-          size = 0.16;
+          if (i < 750) {
+              c = cFeature; 
+              size = 0.18; 
+          } else {
+              if (y > 2.0 && z > 1.0) c = cGolden; 
+              else if (i < 16000) c = cGolden;
+              else if (i < 29000) c = cCream; // Belly/Chest
+              else c = cGolden;
+              size = 0.15;
+          }
       }
       else if (shape === ShapeType.GIFT_BOX) {
           const boxEnd = 30000;
-          const ribbonEnd = 45000;
-
-          size = 0.40; // High density size
-
           if (i < boxEnd) {
-              // Differentiate Edges if possible (based on position approximation or index)
-              // For simplicity, random variation
-              if (Math.random() < 0.3) c = cBoxEdge;
-              else c = cBoxBody;
-          } else if (i < ribbonEnd) {
-              c = cBoxRibbon;
-              size = 0.45;
+             c = Math.random() < 0.3 ? cBoxEdge : cBoxBody;
           } else {
-              // Bow
-              c = cBoxRibbon;
-              size = 0.45;
+             c = cBoxRibbon;
           }
+          size = 0.35; 
       }
       else if (shape === ShapeType.SCROLL) {
-          const handleEnd = 15000;
-          // Handles
-          if (i < handleEnd) {
-               // Wood or Gold?
-               const y = targetPositions[i*3+1];
-               if (Math.abs(y) > 2.5) c = cHandleGold; // Knobs
-               else c = cHandle;
-               size = 0.25;
-          } else {
-               // Paper
-               if (Math.random() < 0.1) c = cPaperEdge;
-               else c = cPaper;
-               size = 0.20;
-          }
+          c = new THREE.Color('#F0E68C'); // Light gold for scroll scatter
+          size = 0.08;
       }
       else if (shape === ShapeType.SNOWFLAKE) {
-          // ICE CRYSTAL PALETTE
-          const r = Math.random();
-          if (r < 0.4) c = cIceCore; // Core White
-          else if (r < 0.7) c = cIceMid; // Cyan
-          else if (r < 0.9) c = cIceClear; // Translucent
-          else c = cIceEdge; // Deep
+          // Color Logic
+          const dist = Math.sqrt(x*x + y*y);
+          if (dist < 2.0) c = cIceCore;
+          else if (dist < 6.0) c = cIceOuter;
+          else c = cIceEdge;
+
+          // --- REALISTIC SNOWFLAKE SIZE VARIATION ---
+          // Real snow isn't just single points, it's a mix of large crystals and fine dust.
+          const rand = Math.random();
           
-          size = 0.12; // Thicker particles for "volume"
+          if (rand > 0.92) {
+              // 8% Large, Glimmering Crystals (The "Hero" particles)
+              size = 0.28; 
+          } else if (rand > 0.65) {
+              // 27% Structural, Medium Particles
+              size = 0.16;
+          } else {
+              // 65% Fine Ice Dust (Creates the volume/fog feel)
+              size = 0.04 + Math.random() * 0.08; 
+          }
       } 
+      else if (shape === ShapeType.TEXT) {
+          const r = Math.random();
+          if (r < 0.5) c = cSpaceDeep; 
+          else if (r < 0.8) c = cSpaceMid; 
+          else if (r < 0.95) c = cSpaceLight; 
+          else c = cStar; 
+          size = 0.14;
+      }
       else {
-          c = Math.random() > 0.5 ? cPurple : cWhite;
-          size = 0.13;
+          c = cPurple;
       }
 
-      colorArray[i * 3] = c.r;
-      colorArray[i * 3 + 1] = c.g;
-      colorArray[i * 3 + 2] = c.b;
-
-      // Random "Big" sparkles
-      if (Math.random() > 0.99) {
-         sizeArray[i] = size * 2.5; 
+      // APPLY BRIGHTNESS CORRECTION
+      if (shape === ShapeType.PUPPY && i < 750) {
+          // Black features should NOT be dimmed or brightened (pure black)
+          colorArray[i * 3] = 0;
+          colorArray[i * 3 + 1] = 0;
+          colorArray[i * 3 + 2] = 0;
       } else {
-         sizeArray[i] = size;
+          colorArray[i * 3] = c.r * brightnessMultiplier;
+          colorArray[i * 3 + 1] = c.g * brightnessMultiplier;
+          colorArray[i * 3 + 2] = c.b * brightnessMultiplier;
+      }
+
+      // Final random size variation (unless handled specifically above)
+      if (shape !== ShapeType.SNOWFLAKE) {
+        if (Math.random() > 0.99) sizeArray[i] = size * 2.5; 
+        else sizeArray[i] = size;
+      } else {
+          // Snowflakes already have size logic applied
+          sizeArray[i] = size;
       }
     }
     return { colors: colorArray, sizes: sizeArray };
@@ -295,13 +307,11 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
     const time = state.clock.getElapsedTime();
     const shapeElapsed = time - shapeStartTimeRef.current;
 
-    // --- Update Shader Uniforms ---
     if (shaderRef.current) {
       shaderRef.current.uniforms.uTime.value = time;
-      
-      // Control Wiggle & Shake
       shaderRef.current.uniforms.uShakeStrength.value = isShaking ? 1.0 : 0.0;
       shaderRef.current.uniforms.uWobble.value = (shape === ShapeType.PUPPY) ? 1.0 : 0.0;
+      shaderRef.current.uniforms.uSparkle.value = (shape === ShapeType.SNOWFLAKE) ? 1.0 : 0.0;
     }
 
     const mouseX = (mouse.x * viewport.width) / 2;
@@ -340,22 +350,21 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
         tz *= 4; 
       }
 
-      // Mouse Interaction
+      // Mouse Repulsion
       const dx = mouseX - positions[ix];
       const dy = mouseY - positions[iy];
       const distSq = dx*dx + dy*dy;
-      const interactionRadius = 4.0; 
+      const interactionRadius = 5.0; 
       
       if (distSq < interactionRadius * interactionRadius) {
           const dist = Math.sqrt(distSq);
           const force = (interactionRadius - dist) / interactionRadius; 
           const angle = Math.atan2(dy, dx);
-          tx -= Math.cos(angle) * force * 1.5;
-          ty -= Math.sin(angle) * force * 1.5;
-          tz += force * 1.0; 
+          tx -= Math.cos(angle) * force * 2.0;
+          ty -= Math.sin(angle) * force * 2.0;
       }
 
-      const lerpFactor = isScatter ? 0.02 : 0.05;
+      const lerpFactor = isScatter ? 0.02 : 0.08;
       
       positions[ix] += (tx - positions[ix]) * lerpFactor;
       positions[iy] += (ty - positions[iy]) * lerpFactor;
@@ -369,25 +378,24 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
        pointsRef.current.rotation.set(0, 0, 0);
        pointsRef.current.lookAt(state.camera.position);
     } else if (shape === ShapeType.SATURN) {
-       pointsRef.current.rotation.x = 0.3; 
+       pointsRef.current.rotation.x = 0.4; 
        pointsRef.current.rotation.y = 0.0;
        pointsRef.current.rotation.z = 0.2 + shapeElapsed * 0.05; 
     } else if (shape === ShapeType.PUPPY) {
-       pointsRef.current.rotation.x = 0; 
-       pointsRef.current.rotation.z = 0;
-       pointsRef.current.rotation.y = Math.sin(shapeElapsed * 0.5) * 0.2; 
+       // Face front initially (0), then gentle sway left/right
+       pointsRef.current.rotation.set(0, 0, 0);
+       // Oscillate +/- 0.25 radians
+       pointsRef.current.rotation.y = Math.sin(shapeElapsed * 0.5) * 0.25;
     } else if (shape === ShapeType.GIFT_BOX) {
        pointsRef.current.rotation.x = 0.2;
        pointsRef.current.rotation.y = shapeElapsed * 0.3;
        pointsRef.current.rotation.z = 0;
     } else if (shape === ShapeType.SCROLL) {
-       pointsRef.current.rotation.x = 0.2; 
-       pointsRef.current.rotation.z = 0; // Flat facing
-       pointsRef.current.rotation.y = 0; 
+       pointsRef.current.rotation.set(0, 0, 0);
     } else if (shape === ShapeType.SNOWFLAKE) {
-       pointsRef.current.rotation.x = Math.sin(shapeElapsed * 0.2) * 0.2;
-       pointsRef.current.rotation.y = shapeElapsed * 0.1;
-       pointsRef.current.rotation.z = Math.sin(shapeElapsed * 0.1) * 0.1;
+       // Slow spin, but start facing camera
+       pointsRef.current.rotation.set(0, 0, 0);
+       pointsRef.current.rotation.y = shapeElapsed * 0.15;
     } else {
        pointsRef.current.rotation.x = 0;
        pointsRef.current.rotation.z = 0;
@@ -402,6 +410,7 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
         <bufferAttribute attach="attributes-customColor" count={colors.length / 3} array={colors} itemSize={3} />
         <bufferAttribute attach="attributes-size" count={sizes.length} array={sizes} itemSize={1} />
       </bufferGeometry>
+      {/* ADDITIVE BLENDING FOR GLOWING EFFECTS */}
       <shaderMaterial
         ref={shaderRef}
         attach="material"
@@ -409,9 +418,10 @@ const Particles: React.FC<ParticlesProps> = ({ shape, isScatter, isShaking }) =>
         uniforms={{ 
             uTime: { value: 0 },
             uWobble: { value: 0.0 },
-            uShakeStrength: { value: 0.0 }
+            uShakeStrength: { value: 0.0 },
+            uSparkle: { value: 0.0 }
         }}
-        transparent
+        transparent={true}
         depthWrite={false}
         blending={THREE.AdditiveBlending} 
       />

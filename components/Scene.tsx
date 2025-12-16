@@ -4,6 +4,7 @@ import { OrbitControls, Stars, Sparkles } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import Particles from './Particles';
 import FloatingPetals from './FloatingPetals';
+import SolidScroll from './SolidScroll';
 import { ShapeType } from '../types';
 
 interface SceneProps {
@@ -27,7 +28,8 @@ const Scene: React.FC<SceneProps> = ({ currentShape, isScatter, isShaking }) => 
       <fog attach="fog" args={['#18002b', 12, 45]} />
       
       {/* Ambient light is minimal, particles emit their own color */}
-      <ambientLight intensity={0.2} />
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 10, 10]} intensity={1} color="#FFD700" />
       
       {/* 3. Background Stars - More abundant but subtle */}
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={1} fade speed={0.5} />
@@ -44,6 +46,9 @@ const Scene: React.FC<SceneProps> = ({ currentShape, isScatter, isShaking }) => 
 
       {/* Main Particle System */}
       <Particles shape={currentShape} isScatter={isScatter} isShaking={isShaking} />
+      
+      {/* Solid Scroll (Only appears in SCROLL state) */}
+      <SolidScroll isOpen={currentShape === ShapeType.SCROLL} />
       
       {/* Romantic Atmosphere for Gift */}
       <FloatingPetals currentShape={currentShape} isScatter={isScatter} />
