@@ -14,27 +14,35 @@ interface SceneProps {
 }
 
 const Scene: React.FC<SceneProps> = ({ currentShape, isScatter, isShaking }) => {
+  const isScrollOpen = currentShape === ShapeType.SCROLL;
+
   return (
     <Canvas
-      camera={{ position: [0, 0, 22], fov: 50 }}
+      camera={{ position: [0, 0, 25], fov: 50 }}
       dpr={[1, 2]} 
       className="w-full h-full block"
-      gl={{ antialias: false, alpha: false, stencil: false, depth: false }} 
+      gl={{ antialias: true, alpha: false }} 
     >
-      {/* 1. Deep Romantic Background Color (Midnight Purple) */}
       <color attach="background" args={['#0b0214']} />
+      <fog attach="fog" args={['#18002b', 15, 60]} />
       
-      {/* 2. Dreamy Haze/Fog (Soft Pink/Purple fade) */}
-      <fog attach="fog" args={['#18002b', 12, 45]} />
+      <ambientLight intensity={isScrollOpen ? 0.6 : 0.4} />
       
-      {/* Ambient light is minimal, particles emit their own color */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 10]} intensity={1} color="#FFD700" />
+      <directionalLight position={[10, 10, 10]} intensity={1.5} color="#FFD700" />
       
-      {/* 3. Background Stars - More abundant but subtle */}
+      {isScrollOpen && (
+          <spotLight 
+            position={[0, 20, 20]} 
+            intensity={4} 
+            angle={0.4} 
+            penumbra={1} 
+            color="#ffffff" 
+            castShadow
+          />
+      )}
+      
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={1} fade speed={0.5} />
       
-      {/* 4. Fairy Dust / Magic Sparkles (Floating around the scene) */}
       <Sparkles 
         count={200} 
         scale={20} 
@@ -44,39 +52,31 @@ const Scene: React.FC<SceneProps> = ({ currentShape, isScatter, isShaking }) => 
         color="#ffc4dd" 
       />
 
-      {/* Main Particle System */}
       <Particles shape={currentShape} isScatter={isScatter} isShaking={isShaking} />
       
-      {/* Solid Scroll (Only appears in SCROLL state) */}
-      <SolidScroll isOpen={currentShape === ShapeType.SCROLL} />
+      <SolidScroll isOpen={isScrollOpen} />
       
-      {/* Romantic Atmosphere for Gift */}
       <FloatingPetals currentShape={currentShape} isScatter={isScatter} />
       
-      {/* Post Processing for the "Ethereal" Glow */}
       <EffectComposer disableNormalPass>
-        {/* Soft, wide bloom for the dreamy effect */}
         <Bloom 
-          luminanceThreshold={0.15} 
+          luminanceThreshold={isScrollOpen ? 0.95 : 0.15} 
           luminanceSmoothing={0.9} 
-          intensity={1.2} 
+          intensity={isScrollOpen ? 0.15 : 1.2} 
           radius={0.8} 
           mipmapBlur 
         />
-        {/* Vignette to darken edges and focus on the center (Cinematic look) */}
-        <Vignette eskil={false} offset={0.1} darkness={0.6} />
+        <Vignette eskil={false} offset={0.1} darkness={isScrollOpen ? 0.2 : 0.6} />
       </EffectComposer>
 
       <OrbitControls 
-        enableZoom={true} 
+        enableZoom={!isScrollOpen} 
         enablePan={false} 
         enableRotate={true}
-        zoomSpeed={0.3}
-        rotateSpeed={0.3} 
-        autoRotate={false} 
-        autoRotateSpeed={0.5} 
-        maxDistance={40}
-        minDistance={10}
+        zoomSpeed={0.5}
+        rotateSpeed={0.4} 
+        maxDistance={50}
+        minDistance={5}
       />
     </Canvas>
   );

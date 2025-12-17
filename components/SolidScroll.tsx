@@ -1,332 +1,371 @@
-import React, { useRef, useState, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+
+import React, { useRef, useState, useMemo, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface SolidScrollProps {
   isOpen: boolean;
 }
 
+const LETTER_CONTENT = `宝宝，在给你写这封信之前，我时常在脑海里酝酿着很多话想跟你讲，有时又在计较斟酌。这是陪你过的第一个生日，好遗憾没有机会和你一起庆祝，只能选择这个方式来表达了。我嘴巴笨笨的，也不太擅长表达，有100%的情感也可能只能表达出60%的样子。
+
+我知道你最不缺的就是祝福了，每一个爱你的人恨不得在许下的愿望里都把你带上，同时还要期盼世界可以多爱你一点，再多一点。每年的十二月都因为你变得特别，每一年的今天都是属于你的，所以我期待。
+
+时常觉得，你像是冬日旷野中炙热燃烧的篝火，将寒意一寸寸逼至角落。其实我不喜欢冬天，但是你的到来，冬天开始变得有意义。在我早已习惯了克制与疏离的世界里，你是我难得想要一读再读的诗篇。
+
+我爱你便会爱你的一切，爱你的坚强勇敢，爱你的抽象，爱你的破碎，爱你如阳光般的明媚，偶尔看你小嘴刻薄的时候也觉得很可爱。我爱的是你本身，而不是怎样的你，这个世界上没有完美的人，我爱你的每一面，你在我这里值得拥有最好的东西和爱。
+
+在哈尔滨和你一起的那几天超级超级开心，或者说，没有你的哈尔滨其实对我来将并没有太大意义，有你才是最重要的。希望下次见面的日子能快速来临。此刻我还有好多话想跟你讲，但是塞不下了呜呜呜...
+
+愿无数晶莹的雪花都化作轻盈的信笺，替我将未表达完的爱徐徐落满你的心间。愿所有的凛冽与寒风，都在触碰到你名字的那一刻，化作温柔的雪色。
+
+我祝愿你的新岁，依然被明亮和幸福包围。
+
+我很想你，真的很想你。
+
+生日快乐，何子豪。`;
+
 const SolidScroll: React.FC<SolidScrollProps> = ({ isOpen }) => {
+  // Animation State
+  // 0: Hidden
+  // 1: Appear (Closed Scroll)
+  // 2: Unrolling
+  // 3: Fully Open (Reading Mode)
+  const [phase, setPhase] = useState(0);
+  const [scrollValue, setScrollValue] = useState(0);
+  const scrollRef = useRef(0);
+  const { gl } = useThree();
+
   const groupRef = useRef<THREE.Group>(null);
-  const paperMeshRef = useRef<THREE.Mesh>(null);
-  const leftHandleRef = useRef<THREE.Group>(null);
-  const rightHandleRef = useRef<THREE.Group>(null);
-  const bgSphereRef = useRef<THREE.Mesh>(null);
+  const topRollerRef = useRef<THREE.Mesh>(null);
+  const bottomRollerRef = useRef<THREE.Mesh>(null);
+  const paperRef = useRef<THREE.Mesh>(null);
 
-  const [progress, setProgress] = useState(0);
+  // --- Animation Sequence ---
+  useEffect(() => {
+    if (isOpen) {
+      setPhase(1);
+      setScrollValue(0);
+      scrollRef.current = 0;
 
-  // --- PARCHMENT TEXTURE GENERATION (REFINED & BRIGHTER) ---
-  const parchmentTexture = useMemo(() => {
-    if (typeof document === 'undefined') return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024; 
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      // 1. Base: Bright Creamy White (High-Class)
-      ctx.fillStyle = '#FFFBF5'; 
-      ctx.fillRect(0, 0, 1024, 1024);
-      
-      // 2. Diamond Dust / Pearl Texture
-      for (let i = 0; i < 80000; i++) {
-        const val = Math.random();
-        // Subtle gold/pink speckles instead of brown dirt
-        ctx.fillStyle = val > 0.5 ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255, 192, 203, 0.15)';
-        ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2);
-      }
-      
-      // 3. Silk Fibers
-      for (let i = 0; i < 300; i++) {
-         ctx.strokeStyle = 'rgba(255, 228, 225, 0.4)'; // Misty Rose fibers
-         ctx.lineWidth = 1;
-         ctx.beginPath();
-         const x = Math.random() * 1024;
-         const y = Math.random() * 1024;
-         ctx.moveTo(x, y);
-         ctx.quadraticCurveTo(
-             x + Math.random()*30-15, y + Math.random()*30-15, 
-             x + Math.random()*60-30, y + Math.random()*60-30
-         );
-         ctx.stroke();
-      }
+      // Start unrolling after 1 second
+      const t1 = setTimeout(() => setPhase(2), 1000);
+      // Finished unrolling after 2.5 seconds total
+      const t2 = setTimeout(() => setPhase(3), 2500);
 
-      // 4. Soft Halo Edge (Clean, not dirty)
-      const grd = ctx.createRadialGradient(512, 512, 300, 512, 512, 800);
-      grd.addColorStop(0, 'rgba(255,255,255,0)');
-      grd.addColorStop(1, 'rgba(255, 228, 196, 0.2)'); // Bisque fade
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, 1024, 1024);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    } else {
+      setPhase(0);
     }
+  }, [isOpen]);
+
+  // --- Scroll Interaction ---
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (phase !== 3) return;
+      e.preventDefault();
+      const delta = e.deltaY * 0.0005; 
+      scrollRef.current = THREE.MathUtils.clamp(scrollRef.current + delta, 0, 1);
+      setScrollValue(scrollRef.current);
+    };
+
+    let startY = 0;
+    const handleTouchStart = (e: TouchEvent) => { startY = e.touches[0].clientY; };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (phase !== 3) return;
+      const deltaY = (startY - e.touches[0].clientY) * 0.002;
+      scrollRef.current = THREE.MathUtils.clamp(scrollRef.current + deltaY, 0, 1);
+      setScrollValue(scrollRef.current);
+      startY = e.touches[0].clientY;
+    };
+
+    const canvas = gl.domElement;
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [phase, gl]);
+
+  // --- Premium Cute Texture Generation ---
+  const scrollTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    // Width: 1250 (Good resolution)
+    const w = 1250; 
+    const h = 4500; 
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    if (ctx) {
+      // 1. Background: Bright Warm Pink Gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#FFF5F7');   // Lavender Blush (Top)
+      grad.addColorStop(1, '#FFC1CC');   // Bubblegum Pink (Bottom)
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Cute Patterns (Polka Dots & Bows)
+      // Polka Dots
+      ctx.fillStyle = 'rgba(255, 182, 193, 0.4)'; // Light Pink Dots
+      for (let py = 0; py < h; py += 120) {
+           for (let px = 0; px < w; px += 120) {
+               ctx.beginPath();
+               // Offset every other row
+               const ox = (py % 240 === 0) ? 60 : 0;
+               ctx.arc(px + ox, py, 12, 0, Math.PI * 2);
+               ctx.fill();
+           }
+      }
+
+      // Mini Bows (Cute Print)
+      ctx.fillStyle = 'rgba(255, 105, 180, 0.2)'; // Hot Pink Low Opacity
+      const drawBow = (bx: number, by: number) => {
+           ctx.beginPath();
+           ctx.moveTo(bx, by);
+           // Left loop
+           ctx.bezierCurveTo(bx - 25, by - 25, bx - 25, by + 25, bx, by);
+           // Right loop
+           ctx.bezierCurveTo(bx + 25, by + 25, bx + 25, by - 25, bx, by);
+           ctx.fill();
+      };
+
+      // Scatter bows randomly
+      for(let i=0; i<60; i++) { 
+          drawBow(Math.random() * w, Math.random() * h);
+      }
+
+      // 3. Borders (White Lace Effect)
+      const margin = 55;
+      
+      // Lace background
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 15;
+      ctx.setLineDash([20, 15]); // Dashed line simulates lace
+      ctx.strokeRect(margin, margin, w - margin*2, h - margin*2);
+      ctx.setLineDash([]); // Reset
+
+      // Inner Solid Gold Line
+      ctx.strokeStyle = '#D4AF37'; 
+      ctx.lineWidth = 4;
+      ctx.strokeRect(margin + 20, margin + 20, w - (margin*2 + 40), h - (margin*2 + 40));
+
+      // 4. Content
+      // Title
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#8B0000'; 
+      ctx.font = '700 100px "STKaiti", "KaiTi", serif'; 
+      ctx.fillText("见字如面", w/2, 120); 
+      
+      // Divider
+      ctx.beginPath();
+      ctx.moveTo(380, 250);
+      ctx.lineTo(w-380, 250);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#FF69B4'; 
+      ctx.stroke();
+
+      // Body Text
+      ctx.fillStyle = '#3E1010'; 
+      ctx.font = '600 52px "STKaiti", "KaiTi", serif'; 
+      ctx.textAlign = 'left';
+
+      const padding = 140; 
+      const maxWidth = w - padding * 2;
+      
+      // COMPACT LAYOUT SETTINGS
+      let y = 300; 
+      const lineHeight = 60; 
+      const paraGap = 25;   
+
+      const paragraphs = LETTER_CONTENT.split('\n');
+      
+      paragraphs.forEach(para => {
+        if (!para.trim()) {
+           y += paraGap; 
+           return;
+        }
+        
+        const chars = para.split('');
+        let line = '';
+        let isFirstLine = true;
+        
+        for (let i = 0; i < chars.length; i++) {
+           const test = line + chars[i];
+           const indent = (isFirstLine) ? 80 : 0; 
+           const xOffset = padding + indent;
+           const effectiveWidth = maxWidth - indent;
+
+           if (ctx.measureText(test).width > effectiveWidth && i > 0) {
+               ctx.fillText(line, xOffset, y);
+               line = chars[i];
+               y += lineHeight;
+               isFirstLine = false;
+           } else {
+               line = test;
+           }
+        }
+        const indent = (isFirstLine) ? 80 : 0;
+        ctx.fillText(line, padding + indent, y);
+        y += lineHeight + paraGap; 
+      });
+
+      // --- Elegant Signature Section ---
+      y += 60; 
+      ctx.textAlign = 'right'; 
+      
+      // 1. The "J" - Playfair Display Italic (Elegant, High-end)
+      ctx.fillStyle = '#8B0000'; 
+      ctx.font = 'italic 120px "Playfair Display", serif'; 
+      ctx.fillText("J", w - 240, y + 20);
+      
+      // 2. The Heart - Custom Path (Not a dull unicode symbol)
+      // Draw a tilted, stylized heart next to the J
+      ctx.save();
+      ctx.translate(w - 180, y - 10);
+      ctx.rotate(0.2); // Tilted slightly for "stamp" look
+      ctx.scale(1.2, 1.2);
+      
+      ctx.beginPath();
+      ctx.fillStyle = '#FF1493';
+      const hx = 0; const hy = 0;
+      ctx.moveTo(hx, hy);
+      ctx.bezierCurveTo(hx - 20, hy - 20, hx - 40, hy + 10, hx, hy + 35);
+      ctx.bezierCurveTo(hx + 40, hy + 10, hx + 20, hy - 20, hx, hy);
+      ctx.fill();
+      ctx.restore();
+
+    }
+
     const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = 16; 
+    tex.anisotropy = 16;
+    tex.flipY = true; 
     return tex;
   }, []);
 
-  // --- MATERIALS (HIGH END & CUTE) ---
-
-  const paperMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-    map: parchmentTexture,
-    color: '#FFFFFF', // Pure White Base
-    emissive: '#FFFAF0', // FloralWhite
-    emissiveIntensity: 0.6, // Higher self-illumination for brightness
-    roughness: 0.4,   // Smoother paper, less rough
-    metalness: 0.1,   // Slight sheen
-    side: THREE.DoubleSide,
-  }), [parchmentTexture]);
-
-  const handleMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#FFB6C1', // LightPink
-    roughness: 0.15,  // Polished plastic/gem look
-    metalness: 0.4,
-    emissive: '#FF69B4', // HotPink glow
-    emissiveIntensity: 0.4,
-  }), []);
-
-  const knobMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#FFD700', // Gold
-    roughness: 0.05,  // Mirror finish
-    metalness: 1.0,   // Real gold look
-    emissive: '#FFA500', 
-    emissiveIntensity: 0.6,
-  }), []);
-
-  // --- BACKGROUND SHADER: "STARLIGHT GLITTER DREAM" ---
-  // Upgraded for sparkle, depth, and vibrant colors
-  const nebulaMaterial = useMemo(() => new THREE.ShaderMaterial({
-      uniforms: {
-          uTime: { value: 0 },
-          uOpacity: { value: 0 },
-          // Vibrant Palette
-          uColorTop: { value: new THREE.Color("#190028") }, // Rich Deep Plum
-          uColorBottom: { value: new THREE.Color("#000000") }, // Void
-          uCloudColor1: { value: new THREE.Color("#FF00CC") }, // Electric Magenta
-          uCloudColor2: { value: new THREE.Color("#00FFFF") }, // Cyan for magical contrast
-          uGlitterColor: { value: new THREE.Color("#FFFFFF") }, // Diamond Sparkle
-      },
-      side: THREE.BackSide, 
-      vertexShader: `
-        varying vec2 vUv;
-        varying vec3 vPos;
-        void main() {
-          vUv = uv;
-          vPos = position;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float uTime;
-        uniform float uOpacity;
-        uniform vec3 uColorTop;
-        uniform vec3 uColorBottom;
-        uniform vec3 uCloudColor1;
-        uniform vec3 uCloudColor2;
-        uniform vec3 uGlitterColor;
-        varying vec2 vUv;
-        varying vec3 vPos;
-
-        // --- Noise Functions ---
-        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-        float snoise(vec3 v) {
-          const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-          const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-          vec3 i  = floor(v + dot(v, C.yyy) );
-          vec3 x0 = v - i + dot(i, C.xxx) ;
-          vec3 g = step(x0.yzx, x0.xyz);
-          vec3 l = 1.0 - g;
-          vec3 i1 = min( g.xyz, l.zxy );
-          vec3 i2 = max( g.xyz, l.zxy );
-          vec3 x1 = x0 - i1 + C.xxx;
-          vec3 x2 = x0 - i2 + C.yyy; 
-          vec3 x3 = x0 - D.yyy;      
-          i = mod289(i);
-          vec4 p = permute( permute( permute(
-                     i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-                   + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
-                   + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-          float n_ = 0.142857142857; 
-          vec3  ns = n_ * D.wyz - D.xzx;
-          vec4 j = p - 49.0 * floor(p * ns.z * ns.z); 
-          vec4 x_ = floor(j * ns.z);
-          vec4 y_ = floor(j - 7.0 * x_ );   
-          vec4 x = x_ *ns.x + ns.yyyy;
-          vec4 y = y_ *ns.x + ns.yyyy;
-          vec4 h = 1.0 - abs(x) - abs(y);
-          vec4 b0 = vec4( x.xy, y.xy );
-          vec4 b1 = vec4( x.zw, y.zw );
-          vec4 s0 = floor(b0)*2.0 + 1.0;
-          vec4 s1 = floor(b1)*2.0 + 1.0;
-          vec4 sh = -step(h, vec4(0.0));
-          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-          vec3 p0 = vec3(a0.xy,h.x);
-          vec3 p1 = vec3(a0.zw,h.y);
-          vec3 p2 = vec3(a1.xy,h.z);
-          vec3 p3 = vec3(a1.zw,h.w);
-          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-          p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-          m = m * m;
-          return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
-        }
-
-        // Random for glitter
-        float random(vec2 st) {
-            return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
-        }
-
-        void main() {
-            vec3 pos = normalize(vPos);
-            vec2 uv = vUv;
-            
-            // 1. RICH GRADIENT
-            // Create a diagonal gradient for more dynamism
-            float gradFactor = (uv.y + uv.x * 0.2) * 1.2;
-            vec3 bg = mix(uColorBottom, uColorTop, smoothstep(0.0, 1.2, gradFactor));
-
-            // 2. ETHEREAL CLOUDS (Multi-layered FBM)
-            float t = uTime * 0.1;
-            float n1 = snoise(pos * 2.5 + vec3(t, 0.0, t * 0.2));
-            float n2 = snoise(pos * 5.0 - vec3(0.0, t * 0.5, 0.0));
-            
-            // Softer cloud mixing
-            float cloudMask = smoothstep(0.2, 0.9, n1 * 0.5 + n2 * 0.5);
-            
-            // Iridescent Cloud Colors
-            vec3 cMix = mix(uCloudColor2, uCloudColor1, n1 * 0.5 + 0.5);
-            // Additive blending for glow
-            bg += cMix * cloudMask * 0.3; 
-
-            // 3. GLITTER / FAIRY DUST (The "High-Class Sparkle")
-            // Use view position to make glitter twinkle based on angle/movement
-            vec2 grid = vPos.xy * 25.0; // High density
-            vec2 id = floor(grid);
-            
-            float r = random(id);
-            // Sparkle logic: Only some cells sparkle, and they pulse with time
-            float sparkleMask = step(0.96, r); // Top 4% are glitter
-            
-            float shine = sin(uTime * 10.0 + r * 100.0) * 0.5 + 0.5;
-            shine = pow(shine, 4.0); // Sharp blink
-            
-            // Glitter color (White/Gold)
-            bg += uGlitterColor * sparkleMask * shine * 0.8;
-
-
-            // 4. BOKEH HIGHLIGHTS (Dreamy feel)
-            float bokehT = uTime * 0.05;
-            float d1 = length(uv - vec2(0.5 + sin(bokehT)*0.3, 0.5 + cos(bokehT)*0.2));
-            float b1 = smoothstep(0.6, 0.0, d1);
-            bg += uCloudColor1 * b1 * 0.15; // Subtle pink glow in center
-
-            gl_FragColor = vec4(bg, uOpacity);
-        }
-      `,
+  // --- Materials ---
+  const materials = useMemo(() => ({
+    roller: new THREE.MeshStandardMaterial({
+      color: '#FFC0CB', 
+      roughness: 0.3,
+      metalness: 0.1,   
+      emissive: '#FF69B4', 
+      emissiveIntensity: 0.5 
+    }),
+    paper: new THREE.MeshBasicMaterial({ 
+      map: scrollTexture,
+      side: THREE.DoubleSide,
       transparent: true,
-      depthWrite: false, 
-  }), []);
+      color: '#FFFFFF' 
+    }),
+    knob: new THREE.MeshPhysicalMaterial({
+      color: '#FF1493', 
+      roughness: 0.2,
+      metalness: 0.2,
+      clearcoat: 1.0,
+      emissive: '#FF1493',
+      emissiveIntensity: 0.2
+    })
+  }), [scrollTexture]);
 
   useFrame((state, delta) => {
-    if (isOpen) {
-      if (progress < 1) {
-         setProgress(p => Math.min(p + delta * 0.8, 1));
-      }
-    } else {
-        if (progress > 0) setProgress(0);
+    // Unroll Animation
+    if (phase >= 2) {
+        const unrollSpeed = delta * 1.5;
+        
+        // HEIGHT ADJUSTMENT: 
+        // Significant reduction for elegance.
+        // Old: +/- 7.0 (Total 14).
+        // New: +/- 5.5 (Total 11). Compact and refined.
+        const limit = 5.5; 
+        
+        if (topRollerRef.current) {
+            topRollerRef.current.position.y = THREE.MathUtils.lerp(topRollerRef.current.position.y, limit, unrollSpeed);
+        }
+        if (bottomRollerRef.current) {
+            bottomRollerRef.current.position.y = THREE.MathUtils.lerp(bottomRollerRef.current.position.y, -limit, unrollSpeed);
+        }
+        if (paperRef.current) {
+            paperRef.current.scale.y = THREE.MathUtils.lerp(paperRef.current.scale.y, limit * 2, unrollSpeed);
+        }
     }
 
-    if (paperMeshRef.current && leftHandleRef.current && rightHandleRef.current) {
-        const maxWidth = 16;
-        const currentWidth = Math.max(0.2, progress * maxWidth);
-        
-        // Scale Paper Width (X)
-        paperMeshRef.current.scale.set(currentWidth, 8, 1);
-        
-        const handleOffset = currentWidth / 2;
-        leftHandleRef.current.position.x = -handleOffset;
-        rightHandleRef.current.position.x = handleOffset;
-        
-        // Roll rotation (Spin handles)
-        const rollAngle = -progress * Math.PI * 6;
-        leftHandleRef.current.rotation.y = rollAngle;
-        rightHandleRef.current.rotation.y = -rollAngle;
-    }
-    
-    // Animate Nebula
-    if (nebulaMaterial) {
-        nebulaMaterial.uniforms.uTime.value = state.clock.getElapsedTime();
-        nebulaMaterial.uniforms.uOpacity.value = progress; // Fade in with scroll
-    }
-    
-    if (groupRef.current) {
-        const t = state.clock.getElapsedTime();
-        // Gentle Float
-        groupRef.current.position.y = Math.sin(t * 0.5) * 0.2;
-        
-        // --- FORCE FACE CAMERA ---
-        groupRef.current.lookAt(state.camera.position);
+    // Texture Scrolling
+    if (phase === 3 && scrollTexture) {
+         // View Ratio logic optimized for shorter physical scroll (11 units height)
+         // vs 4500px texture.
+         // Needs to be slightly larger than before to fill the frame nicely.
+         const viewRatio = 0.28; 
+         scrollTexture.repeat.set(1, viewRatio);
+         
+         const targetOffset = (1 - viewRatio) * (1 - scrollValue);
+         scrollTexture.offset.y = THREE.MathUtils.lerp(scrollTexture.offset.y, targetOffset, delta * 8);
     }
   });
 
-  const renderHandle = (side: 'left' | 'right') => (
-      <>
-         {/* Main Rod */}
-         <mesh material={handleMaterial} position={[0,0,0.1]}> 
-             <cylinderGeometry args={[0.35, 0.35, 8.5, 32]} />
-         </mesh>
-         
-         {/* Top Knob */}
-         <mesh position={[0, 4.35, 0.1]} material={knobMaterial}>
-             <sphereGeometry args={[0.6, 32, 32]} />
-         </mesh>
-         {/* Top Decoration Rings */}
-         <mesh position={[0, 4.0, 0.1]} material={knobMaterial} rotation={[Math.PI/2, 0, 0]}>
-             <torusGeometry args={[0.35, 0.05, 16, 32]} />
-         </mesh>
-
-         {/* Bottom Knob */}
-         <mesh position={[0, -4.35, 0.1]} material={knobMaterial}>
-             <sphereGeometry args={[0.6, 32, 32]} />
-         </mesh>
-         {/* Bottom Decoration Rings */}
-         <mesh position={[0, -4.0, 0.1]} material={knobMaterial} rotation={[Math.PI/2, 0, 0]}>
-             <torusGeometry args={[0.35, 0.05, 16, 32]} />
-         </mesh>
-      </>
-  );
-
   return (
-    <group ref={groupRef} visible={isOpen || progress > 0}>
-      
-      {/* 360 Degree Nebula Sphere (Large) */}
-      <mesh ref={bgSphereRef} material={nebulaMaterial} scale={[1,1,1]}>
-         <sphereGeometry args={[45, 64, 64]} />
-      </mesh>
+    <group ref={groupRef} visible={isOpen}>
+       <group position={[0, 0, 0]}> {/* Center Group */}
+          
+          {/* Top Roller - Thinner & More Elegant */}
+          <group ref={topRollerRef} position={[0, 0, 0.1]}>
+             {/* Rod - Radius reduced from 0.35 to 0.22 */}
+             <mesh material={materials.roller} rotation={[0, 0, Math.PI/2]}>
+                 <cylinderGeometry args={[0.22, 0.22, 13.0, 32]} />
+             </mesh>
+             {/* Knobs - Radius reduced from 0.5 to 0.32 */}
+             <mesh position={[6.6, 0, 0]} material={materials.knob} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.32, 0.32, 0.2, 32]} />
+             </mesh>
+             <mesh position={[-6.6, 0, 0]} material={materials.knob} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.32, 0.32, 0.2, 32]} />
+             </mesh>
+             {/* Connectors */}
+             <mesh position={[6.45, 0, 0]} material={materials.roller} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
+             </mesh>
+             <mesh position={[-6.45, 0, 0]} material={materials.roller} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
+             </mesh>
+          </group>
 
-      {/* PAPER PLANE */}
-      <mesh ref={paperMeshRef} material={paperMaterial} position={[0,0,0]}>
-        <planeGeometry args={[1, 1, 64, 64]} />
-      </mesh>
+          {/* Paper (Plane) - Width 11.5 (Elegant ratio) */}
+          <mesh ref={paperRef} material={materials.paper} position={[0, 0, 0]} scale={[1, 0, 1]}>
+              <planeGeometry args={[11.5, 1]} /> 
+          </mesh>
 
-      {/* LEFT HANDLE */}
-      <group ref={leftHandleRef}>
-         {renderHandle('left')}
-      </group>
+          {/* Bottom Roller */}
+          <group ref={bottomRollerRef} position={[0, 0, 0.1]}>
+             <mesh material={materials.roller} rotation={[0, 0, Math.PI/2]}>
+                 <cylinderGeometry args={[0.22, 0.22, 13.0, 32]} />
+             </mesh>
+             {/* Knobs */}
+             <mesh position={[6.6, 0, 0]} material={materials.knob} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.32, 0.32, 0.2, 32]} />
+             </mesh>
+             <mesh position={[-6.6, 0, 0]} material={materials.knob} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.32, 0.32, 0.2, 32]} />
+             </mesh>
+             <mesh position={[6.45, 0, 0]} material={materials.roller} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
+             </mesh>
+             <mesh position={[-6.45, 0, 0]} material={materials.roller} rotation={[0,0,Math.PI/2]}>
+                 <cylinderGeometry args={[0.15, 0.15, 0.1, 16]} />
+             </mesh>
+          </group>
 
-      {/* RIGHT HANDLE */}
-      <group ref={rightHandleRef}>
-         {renderHandle('right')}
-      </group>
-      
-      {/* High Intensity Lights for Bright Scroll */}
-      <pointLight position={[0, 0, 8]} intensity={3.5} color="#FFFACD" distance={30} />
-      <pointLight position={[0, 5, 5]} intensity={3.0} color="#FFB6C1" distance={20} />
-      {/* Fill Light for Handles */}
-      <pointLight position={[0, -5, 5]} intensity={1.5} color="#E6E6FA" distance={20} />
-      <ambientLight intensity={1.2} color="#FFFFFF" />
+       </group>
+
+       {/* Stronger Light specifically for the scroll */}
+       <pointLight position={[0, 0, 12]} intensity={2.5} distance={25} color="#FFF0F5" />
     </group>
   );
 };

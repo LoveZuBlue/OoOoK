@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 
 interface UIProps {
@@ -33,7 +34,6 @@ const UI: React.FC<UIProps> = ({
 }) => {
   const [opacity, setOpacity] = useState(0);
 
-  // Logic to force hide UI during Scroll stage (giftStage === 'open')
   const shouldHideUI = giftStage === 'open';
 
   useEffect(() => {
@@ -81,7 +81,6 @@ const UI: React.FC<UIProps> = ({
     );
   };
 
-  // Button logic for Gift Sequence
   const isGiftSequence = giftStage === 'forming' || giftStage === 'present' || giftStage === 'shaking';
   const isGiftReady = giftStage === 'present';
   const isGiftShaking = giftStage === 'shaking';
@@ -124,19 +123,12 @@ const UI: React.FC<UIProps> = ({
             transform: `translate(-50%, -50%) scale(${showPhrase ? 1 : 0.98}) blur(${showPhrase ? 0 : '8px'})` 
             }}
         >
-            {/* Glass Card Container */}
             <div className="relative p-10 md:p-16 rounded-2xl border border-white/5 bg-black/30 backdrop-blur-md shadow-2xl overflow-hidden">
-                
-                {/* Corner Accents */}
                 <div className="absolute top-0 left-0 w-20 h-20 bg-gradient-to-br from-pink-500/10 to-transparent opacity-50" />
                 <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-purple-500/10 to-transparent opacity-50" />
-                
-                {/* Main Text */}
                 <p className="whitespace-pre-line font-serif italic text-2xl md:text-4xl lg:text-5xl text-white leading-[1.6] md:leading-[1.5] tracking-wide drop-shadow-[0_2px_15px_rgba(255,100,200,0.5)]">
                 "{phrase}"
                 </p>
-                
-                {/* Signature / Decorative Line */}
                 <div className="mt-10 flex items-center justify-center gap-4 opacity-50">
                 <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
                 <div className="text-pink-200 font-display text-xs">♥</div>
@@ -146,30 +138,33 @@ const UI: React.FC<UIProps> = ({
         </div>
       )}
 
+      {/* --- SCROLL HINT (Only shown when scroll is open) --- */}
+      {giftStage === 'open' && (
+        <div className="absolute top-[85%] left-1/2 -translate-x-1/2 text-white/70 animate-bounce pointer-events-none text-center flex flex-col items-center gap-2">
+            <p className="text-[10px] uppercase tracking-[0.6em] font-display font-bold">Slide Down to Read</p>
+            <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent" />
+        </div>
+      )}
+
       {/* --- BOTTOM CONTROLS --- */}
       <div className="flex flex-col items-center gap-6 mb-8 pointer-events-auto z-20">
         
-        {/* GIFT BUTTON */}
         {isGiftSequence ? (
             <div className="relative flex items-center justify-center">
-                 {/* 1. STATE: PREPARING (FORMING) */}
                  {!isGiftReady && (
                      <div className="flex flex-col items-center gap-3 transition-opacity duration-500 animate-fade-in">
                          <div className="w-12 h-12 rounded-full border border-white/10 border-t-pink-300 animate-spin" />
                      </div>
                  )}
 
-                 {/* 2. STATE: READY / SHAKING */}
                  {isGiftReady && (
                     <button
                         onClick={onOpenGift}
                         className={`group relative transition-all duration-1000 ${isGiftShaking ? 'scale-95' : 'hover:scale-105'} cursor-pointer`}
                     >
-                         {/* Multi-layer Aura Glow */}
                          <div className="absolute inset-0 bg-pink-400 blur-[40px] opacity-30 animate-pulse-slow rounded-full" />
                          <div className="absolute inset-0 bg-purple-500 blur-[20px] opacity-20 animate-pulse-fast rounded-full" />
                          
-                         {/* Crystal Button - REDUCED SIZE */}
                          <div className={`
                              relative px-12 py-4 rounded-full 
                              bg-white/10 backdrop-blur-md 
@@ -178,15 +173,12 @@ const UI: React.FC<UIProps> = ({
                              group-hover:bg-white/20 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.6)]
                              transition-all duration-500 overflow-hidden
                          `}>
-                             {/* Moving Sheen */}
                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent -skew-x-12 translate-x-[-150%] group-hover:animate-shimmer" />
-
-                             {/* Text - Smaller font size */}
                              <span className={`font-serif italic text-lg tracking-[0.25em] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] flex items-center gap-4
                                 ${isGiftShaking ? 'animate-shake' : ''}
                              `}>
                                 <span className="text-xs opacity-90 group-hover:rotate-180 transition-transform duration-700">✦</span>
-                                OPEN
+                                OPEN SURPRISE
                                 <span className="text-xs opacity-90 group-hover:-rotate-180 transition-transform duration-700">✦</span>
                              </span>
                          </div>
@@ -194,7 +186,6 @@ const UI: React.FC<UIProps> = ({
                  )}
             </div>
         ) : (
-            // STANDARD BUTTON
             (giftStage === 'idle' && !shouldHideUI) && (
                 <div className="flex flex-col items-center gap-5">
                     <button
@@ -206,17 +197,10 @@ const UI: React.FC<UIProps> = ({
                         ${isInteracting ? 'cursor-not-allowed opacity-40 grayscale' : 'cursor-pointer hover:scale-[1.02]'}
                     `}
                     >
-                        {/* High-end Frosted Glass Background */}
                         <div className="absolute inset-0 bg-white/5 backdrop-blur-md rounded-full border border-white/10 transition-all duration-500 group-hover:bg-white/10 group-hover:border-white/30" />
-                        
-                        {/* Inner Gradient Border */}
                         <div className="absolute inset-0 rounded-full opacity-30 bg-gradient-to-r from-transparent via-pink-300/20 to-transparent group-hover:opacity-60 transition-opacity duration-500" />
-
-                        {/* Content */}
                         <span className="relative z-10 flex items-center justify-center gap-6">
-                             {/* Only show stars when active */}
                             {!isInteracting && <span className="text-[10px] text-pink-200/70 group-hover:rotate-180 transition-transform duration-700">✦</span>}
-                            
                             <span className={`
                             font-display text-sm md:text-base tracking-[0.4em] 
                             transition-all duration-500
@@ -224,12 +208,9 @@ const UI: React.FC<UIProps> = ({
                             `}>
                             {isInteracting ? "DREAMING..." : "MAKE A WISH"}
                             </span>
-
                             {!isInteracting && <span className="text-[10px] text-pink-200/70 group-hover:-rotate-180 transition-transform duration-700">✦</span>}
                         </span>
                     </button>
-                    
-                    {/* --- GUIDE HINT (CHINESE) --- */}
                     <div className={`
                          text-pink-100/50 text-[10px] md:text-[11px] font-medium tracking-[0.15em] font-sans
                          transition-all duration-700
@@ -244,7 +225,6 @@ const UI: React.FC<UIProps> = ({
         )}
       </div>
 
-      {/* Progress Counter - HIDE in Scroll mode */}
       {!shouldHideUI && (
         <div 
             className={`absolute bottom-10 right-10 flex flex-col items-end gap-1 pointer-events-none transition-opacity duration-1000 ${unlockedCount > 0 ? 'opacity-60' : 'opacity-0'}`}
