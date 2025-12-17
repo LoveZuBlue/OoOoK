@@ -49,7 +49,7 @@ const UI: React.FC<UIProps> = ({
       return (
         <div className="px-4 py-2 border border-white/10 rounded-sm">
           <span className="text-white/40 text-[9px] uppercase tracking-[0.3em] font-display animate-pulse">
-            Loading...
+            Loading BGM...
           </span>
         </div>
       );
@@ -59,16 +59,17 @@ const UI: React.FC<UIProps> = ({
       return (
          <div className="px-4 py-2 border border-white/5 rounded-sm opacity-50">
           <span className="text-white/30 text-[9px] uppercase tracking-[0.3em] font-display">
-            Silent Mode
+            No Audio
           </span>
         </div>
       );
     }
 
+    // Success State
     return (
       <button 
         onClick={onToggleMusic}
-        className="group relative px-4 py-2 overflow-hidden rounded-sm transition-all duration-500"
+        className={`group relative px-4 py-2 overflow-hidden rounded-sm transition-all duration-500 ${!isMusicPlaying ? 'animate-pulse' : ''}`}
       >
         <div className={`absolute inset-0 border border-white/10 group-hover:border-pink-300/30 transition-colors duration-500 ${isMusicPlaying ? 'bg-pink-500/10' : 'bg-transparent'}`} />
         {isMusicPlaying && (
@@ -135,14 +136,6 @@ const UI: React.FC<UIProps> = ({
                 <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
                 </div>
             </div>
-        </div>
-      )}
-
-      {/* --- SCROLL HINT (Only shown when scroll is open) --- */}
-      {giftStage === 'open' && (
-        <div className="absolute top-[85%] left-1/2 -translate-x-1/2 text-white/70 animate-bounce pointer-events-none text-center flex flex-col items-center gap-2">
-            <p className="text-[10px] uppercase tracking-[0.6em] font-display font-bold">Slide Down to Read</p>
-            <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent" />
         </div>
       )}
 

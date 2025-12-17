@@ -1,3 +1,4 @@
+
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -112,6 +113,7 @@ const FloatingPetals: React.FC<FloatingPetalsProps> = ({ currentShape, isScatter
   useFrame((state) => {
     if (!meshRef.current) return;
     
+    // Show in Scroll mode, Gift mode, or during transition/scatter
     const isActive = (currentShape === ShapeType.GIFT_BOX || currentShape === ShapeType.SCROLL);
     const time = state.clock.getElapsedTime();
 
@@ -134,6 +136,7 @@ const FloatingPetals: React.FC<FloatingPetalsProps> = ({ currentShape, isScatter
 
       dummy.position.set(p.x, p.y, p.z);
       
+      // If active, show; otherwise shrink to 0
       const s = isActive ? 1.0 : 0.0;
       
       dummy.scale.set(p.scale * s, p.scale * s, p.scale * s);
@@ -151,13 +154,14 @@ const FloatingPetals: React.FC<FloatingPetalsProps> = ({ currentShape, isScatter
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]} geometry={petalGeometry}>
       <meshStandardMaterial 
         transparent 
-        opacity={0.95} 
+        opacity={0.95} // Restored full opacity
         side={THREE.DoubleSide} 
         map={petalTexture}
         roughness={0.4}
         metalness={0.1}
-        emissive="#FFB6C1" // Light Pink emissive
-        emissiveIntensity={0.6} // High intensity for brightness
+        emissive="#FFB6C1" 
+        emissiveIntensity={0.6} 
+        depthWrite={false}
       />
     </instancedMesh>
   );
