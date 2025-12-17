@@ -4,14 +4,25 @@ import UI from './components/UI';
 import { ShapeType } from './types';
 import { PHRASES } from './constants';
 
-const PHRASE_SEQUENCE = [2, 1, 0, 4, 6, 5, 7, 8, 3];
+const PHRASE_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 const CACHE_BUSTER = new Date().getTime(); 
 
+// --- 音乐配置区域 ---
+// 系统会自动按顺序尝试播放。
+// 如果你想用自己的音乐，请将文件命名为 "bgm.mp3" 并放入项目的 public 文件夹中。
 const AUDIO_SOURCES = [
-  `https://raw.githack.com/LoveZuBlue/OoOoK/main/BGM.mp3?v=${CACHE_BUSTER}`,
-  `https://cdn.jsdelivr.net/gh/LoveZuBlue/OoOoK@main/BGM.mp3?v=${CACHE_BUSTER}`,
-  `https://raw.githubusercontent.com/LoveZuBlue/OoOoK/main/BGM.mp3?v=${CACHE_BUSTER}`,
+  // 1. 【优先】本地自定义文件
+  // 操作：将你的mp3文件重命名为 bgm.mp3，放入 public 文件夹(或根目录)
+  "bgm.mp3", 
+
+  // 2. 【备选】Beautiful Memories (如果本地没有bgm.mp3，会自动播放这首)
+  "https://cdn.pixabay.com/audio/2021/11/25/audio_402636657c.mp3",
+  
+  // 3. 【备选】Rebirth
+  "https://cdn.pixabay.com/audio/2020/05/01/audio_16a3f12015.mp3",
+  
+  // 4. Fallback
   "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" 
 ];
 
@@ -35,8 +46,9 @@ const App: React.FC = () => {
   
   const sequenceStepRef = useRef(0);
 
+  // Handle errors (e.g., if local bgm.mp3 is missing, switch to next url)
   const handleAudioError = () => {
-    console.warn(`Audio source failed: ${AUDIO_SOURCES[currentSourceIndex]}`);
+    console.warn(`Audio source failed/missing: ${AUDIO_SOURCES[currentSourceIndex]}`);
     if (currentSourceIndex < AUDIO_SOURCES.length - 1) {
       setAudioStatus('loading');
       setCurrentSourceIndex(prev => prev + 1);
@@ -47,6 +59,7 @@ const App: React.FC = () => {
 
   const handleCanPlay = () => {
     if (audioStatus !== 'success') {
+      console.log(`Audio loaded successfully: ${AUDIO_SOURCES[currentSourceIndex]}`);
       setAudioStatus('success');
     }
   };
@@ -70,12 +83,13 @@ const App: React.FC = () => {
   };
 
   const handleNextInteraction = () => {
+    // Attempt auto-play on first interaction if not playing
     if (!isMusicPlaying && audioRef.current && audioStatus === 'success') {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => setIsMusicPlaying(true))
-          .catch((e) => console.log("Auto-play blocked:", e.message));
+          .catch((e) => console.log("Auto-play blocked by browser policy:", e.message));
       }
     }
 

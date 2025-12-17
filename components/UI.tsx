@@ -132,7 +132,7 @@ const UI: React.FC<UIProps> = ({
                 <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-purple-500/10 to-transparent opacity-50" />
                 
                 {/* Main Text */}
-                <p className="font-serif italic text-2xl md:text-4xl lg:text-5xl text-white leading-[1.6] md:leading-[1.5] tracking-wide drop-shadow-[0_2px_15px_rgba(255,100,200,0.5)]">
+                <p className="whitespace-pre-line font-serif italic text-2xl md:text-4xl lg:text-5xl text-white leading-[1.6] md:leading-[1.5] tracking-wide drop-shadow-[0_2px_15px_rgba(255,100,200,0.5)]">
                 "{phrase}"
                 </p>
                 
