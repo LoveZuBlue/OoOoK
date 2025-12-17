@@ -6,17 +6,24 @@ import { PHRASES } from './constants';
 
 const PHRASE_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
-// --- 🎵 这里换音乐 🎵 ---
+const CACHE_BUSTER = new Date().getTime(); 
+
+// --- 音乐配置区域 ---
+// 系统会自动按顺序尝试播放。
+// 如果你想用自己的音乐，请将文件命名为 "bgm.mp3" 并放入项目的 public 文件夹中。
 const AUDIO_SOURCES = [
-  // 方式 A (最简单): 把你的音乐改名为 bgm.mp3，放入 public 文件夹，下面这行不用动。
+  // 1. 【优先】本地自定义文件
+  // 操作：将你的mp3文件重命名为 bgm.mp3，放入 public 文件夹(或根目录)
   "bgm.mp3", 
 
-  // 方式 B (用链接): 如果你想用网络链接，把下面这个引号里的地址换成你的 mp3 链接即可。
-  // 例如: "https://example.com/my-song.mp3"
+  // 2. 【备选】Beautiful Memories (如果本地没有bgm.mp3，会自动播放这首)
   "https://cdn.pixabay.com/audio/2021/11/25/audio_402636657c.mp3",
   
-  // 备用音乐
-  "https://cdn.pixabay.com/audio/2020/05/01/audio_16a3f12015.mp3"
+  // 3. 【备选】Rebirth
+  "https://cdn.pixabay.com/audio/2020/05/01/audio_16a3f12015.mp3",
+  
+  // 4. Fallback
+  "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" 
 ];
 
 const App: React.FC = () => {
@@ -51,7 +58,6 @@ const App: React.FC = () => {
   };
 
   const handleCanPlay = () => {
-    // Prevent flickering logic if already success
     if (audioStatus !== 'success') {
       console.log(`Audio loaded successfully: ${AUDIO_SOURCES[currentSourceIndex]}`);
       setAudioStatus('success');
