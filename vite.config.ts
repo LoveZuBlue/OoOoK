@@ -1,23 +1,14 @@
-import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      }
-    };
-});
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  // ⚠️ 重要：这里必须填 '/你的仓库名/'
+  // 如果你在GitHub创建的仓库叫 birthday-gift，这里就填 '/birthday-gift/'
+  // 如果你还没确定名字，或者部署后发现白屏/资源丢失，请回来修改这一行
+  base: '/birthday-gift/', 
+  build: {
+    outDir: 'dist',
+  }
+})
