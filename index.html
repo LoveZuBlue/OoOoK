@@ -2,10 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Boxhao's Cosmic Birthday</title>
+    <!-- Tailwind CDN is generally accessible, but using local CSS is better. For now keeping CDN for simplicity. -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- CHANGED: Use loli.net mirror for Google Fonts (Much faster in China) -->
+    <link href="https://fonts.loli.net/css2?family=Cinzel:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    
     <script>
       tailwind.config = {
         theme: {
@@ -13,6 +17,8 @@
             fontFamily: {
               serif: ['"Playfair Display"', 'serif'],
               display: ['"Cinzel"', 'serif'],
+              // Added a fallback Chinese font just in case
+              chinese: ['"Ma Shan Zheng"', '"STKaiti"', '"KaiTi"', 'serif'] 
             },
             colors: {
               romantic: {
@@ -30,14 +36,12 @@
       body { 
         margin: 0; 
         overflow: hidden; 
-        /* Deep Romantic Gradient Background */
         background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
         color: white; 
+        /* Prevent pull-to-refresh on mobile */
+        overscroll-behavior: none;
       }
-      /* Custom scrollbar for phrase list if needed */
-      ::-webkit-scrollbar { width: 5px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+      #root { width: 100%; height: 100vh; }
     </style>
   <script type="importmap">
 {
@@ -49,12 +53,15 @@
     "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.4.2",
     "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
     "@react-three/postprocessing": "https://esm.sh/@react-three/postprocessing@^3.0.4",
-    "postprocessing": "https://esm.sh/postprocessing@^6.36.6"
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <!-- CHANGED: Point to local entry file instead of importmap -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

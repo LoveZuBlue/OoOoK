@@ -194,7 +194,7 @@ const SceneContent: React.FC<SceneProps> = ({ currentShape, isScatter, isShaking
             
             <FloatingPetals currentShape={currentShape} isScatter={isScatter} />
             
-            <EffectComposer disableNormalPass>
+            <EffectComposer enableNormalPass={false}>
                 <Bloom 
                     luminanceThreshold={isScrollOpen ? 0.8 : 0.15} 
                     luminanceSmoothing={0.9} 
