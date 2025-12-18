@@ -2,43 +2,57 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Boxhao's Cosmic Birthday</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Use loli.net mirror for Google Fonts (Fast in China) -->
-    <link href="https://fonts.loli.net/css2?family=Cinzel:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <!-- China-friendly Font Mirror (loli.net replaces googleapis) -->
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+    <link href="https://fonts.loli.net/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;700&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Noto+Serif+SC:wght@300;400;700&display=swap" rel="stylesheet">
     
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              serif: ['"Playfair Display"', 'serif'],
-              display: ['"Cinzel"', 'serif'],
-              chinese: ['"Ma Shan Zheng"', '"STKaiti"', '"KaiTi"', 'serif'] 
-            },
-            colors: {
-              romantic: {
-                900: '#1a0b2e',
-                800: '#2d1b4e',
-                500: '#ff7eb3',
-                300: '#7afcff',
-              }
-            }
-          },
-        },
-      }
-    </script>
     <style>
-      body { 
-        margin: 0; 
-        overflow: hidden; 
-        background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
-        color: white; 
-        overscroll-behavior: none;
+      /* Font Setup */
+      .font-display { font-family: 'Cinzel', serif; }
+      .font-serif { font-family: 'Playfair Display', serif; }
+      
+      body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+      
+      /* Animation Utilities */
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
-      #root { width: 100%; height: 100vh; }
+      .animate-fade-in { animation: fade-in 1s ease-out forwards; }
+      
+      @keyframes pulse-slow {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.1); }
+      }
+      .animate-pulse-slow { animation: pulse-slow 3s infinite; }
+      
+      @keyframes pulse-fast {
+        0%, 100% { opacity: 0.1; transform: scale(0.9); }
+        50% { opacity: 0.3; transform: scale(1.2); }
+      }
+      .animate-pulse-fast { animation: pulse-fast 1.5s infinite; }
+      
+      @keyframes shimmer {
+        0% { transform: translateX(-150%) skewX(-12deg); }
+        100% { transform: translateX(150%) skewX(-12deg); }
+      }
+      .group:hover .animate-shimmer {
+        animation: shimmer 1s infinite;
+      }
+      
+      @keyframes shake {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-5deg); }
+        75% { transform: rotate(5deg); }
+      }
+      .animate-shake { animation: shake 0.5s ease-in-out infinite; }
     </style>
   <script type="importmap">
 {
@@ -49,15 +63,16 @@
     "three": "https://esm.sh/three@^0.182.0",
     "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.4.2",
     "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
-    "@react-three/postprocessing": "https://esm.sh/@react-three/postprocessing@^3.0.4",
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "@react-three/postprocessing": "https://esm.sh/@react-three/postprocessing@^3.0.4"
   }
 }
 </script>
 </head>
   <body>
+    <!-- The Root Element required by React -->
     <div id="root"></div>
+    
+    <!-- Application Entry Point -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
