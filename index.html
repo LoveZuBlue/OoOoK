@@ -4,10 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Boxhao's Cosmic Birthday</title>
-    <!-- Tailwind CDN is generally accessible, but using local CSS is better. For now keeping CDN for simplicity. -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- CHANGED: Use loli.net mirror for Google Fonts (Much faster in China) -->
+    <!-- Use loli.net mirror for Google Fonts (Fast in China) -->
     <link href="https://fonts.loli.net/css2?family=Cinzel:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     
     <script>
@@ -17,7 +16,6 @@
             fontFamily: {
               serif: ['"Playfair Display"', 'serif'],
               display: ['"Cinzel"', 'serif'],
-              // Added a fallback Chinese font just in case
               chinese: ['"Ma Shan Zheng"', '"STKaiti"', '"KaiTi"', 'serif'] 
             },
             colors: {
@@ -38,7 +36,6 @@
         overflow: hidden; 
         background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
         color: white; 
-        /* Prevent pull-to-refresh on mobile */
         overscroll-behavior: none;
       }
       #root { width: 100%; height: 100vh; }
@@ -61,7 +58,6 @@
 </head>
   <body>
     <div id="root"></div>
-    <!-- CHANGED: Point to local entry file instead of importmap -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
